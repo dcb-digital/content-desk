@@ -57,6 +57,9 @@ those at ~4.5MB). Deleting a source removes its objects.
 - Drizzle schema: /src/db/schema.ts (do not modify enums without a migration)
 - Migrations: npx drizzle-kit generate && npx drizzle-kit migrate
 - Seed: SEED_ADMIN_PASSWORD='...' npx tsx src/db/seed.ts
+- Prompts: add to /src/db/prompt-seeds.ts then `npx tsx src/db/sync-prompts.ts` to back-fill
+  existing workspaces. A key missing from the DB is a hard failure at generation time.
+  Neither script ever overwrites a prompt key that already exists — UI edits win.
 - drizzle.config.ts uses DATABASE_URL (Session pooler, not Transaction pooler)
 
 ## Encrypted LLM keys
