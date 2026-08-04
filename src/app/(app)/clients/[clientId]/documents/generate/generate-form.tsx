@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TipTapEditor } from "@/components/editor/tiptap-editor";
+import TurndownService from "turndown";
 import { saveGeneratedDocument } from "./actions";
+
+const turndown = new TurndownService({ headingStyle: "atx", bulletListMarker: "-" });
 
 type Props = {
   clientId: string;
@@ -176,8 +179,8 @@ export function GenerateForm({ clientId, disabled, initialTitle, initialKeyword,
       <TipTapEditor
         content={editorHtml}
         editable
-        onChange={(text) => {
-          bodyMdRef.current = text;
+        onChange={(html) => {
+          bodyMdRef.current = turndown.turndown(html);
         }}
       />
     </div>

@@ -5,21 +5,26 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { EditorToolbar } from "./editor-toolbar";
 
 type Props = {
   content?: string; // HTML string
   editable?: boolean;
-  onChange?: (markdown: string) => void;
+  onChange?: (html: string) => void;
+  onChangeText?: (text: string) => void;
   className?: string;
   placeholder?: string;
+  showToolbar?: boolean;
 };
 
 export function TipTapEditor({
   content,
   editable = true,
   onChange,
+  onChangeText,
   className,
   placeholder = "Start writing…",
+  showToolbar = true,
 }: Props) {
   const editor = useEditor({
     extensions: [
@@ -43,7 +48,8 @@ export function TipTapEditor({
       },
     },
     onUpdate: ({ editor }) => {
-      onChange?.(editor.getText());
+      onChange?.(editor.getHTML());
+      onChangeText?.(editor.getText());
     },
   });
 
@@ -56,15 +62,21 @@ export function TipTapEditor({
     }
   }, [editor, content]);
 
+  const showBar = editable && showToolbar;
+
   return (
-    <div
-      className={cn(
-        "rounded-lg border border-border bg-card px-6 py-5 cursor-text",
-        !editable && "cursor-default",
-      )}
-      onClick={() => editor?.commands.focus()}
-    >
-      <EditorContent editor={editor} />
+    <div>
+      {showBar && <EditorToolbar editor={editor} />}
+      <div
+        className={cn(
+          "border border-border bg-card px-6 py-5 cursor-text",
+          showBar ? "rounded-b-lg" : "rounded-lg",
+          !editable && "cursor-default",
+        )}
+        onClick={() => editor?.commands.focus()}
+      >
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }

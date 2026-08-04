@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { marked } from "marked";
+import TurndownService from "turndown";
 import { TipTapEditor } from "@/components/editor/tiptap-editor";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { updateDocument } from "./actions";
-import { Copy, Check, Download, AlertTriangle, Info } from "lucide-react";
+import { Copy, Check, Download, AlertTriangle, Info, Code2 } from "lucide-react";
+
+const turndown = new TurndownService({ headingStyle: "atx", bulletListMarker: "-" });
 
 type QAResult = {
   rule: string;
@@ -40,13 +43,16 @@ type Props = { doc: Doc; clientId: string };
 
 export function DocumentEditor({ doc, clientId }: Props) {
   const router = useRouter();
+  // bodyMd tracks markdown; htmlRef tracks the current HTML for copy-as-HTML
   const [bodyMd, setBodyMd] = useState(doc.body_md ?? "");
+  const htmlRef = useRef<string>(doc.body_md ? marked.parse(doc.body_md, { async: false }) : "");
   const [wordCount, setWordCount] = useState(() =>
     doc.body_md ? doc.body_md.trim().split(/\s+/).filter(Boolean).length : 0
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedHtml, setCopiedHtml] = useState(false);
   const [qaResults, setQaResults] = useState<QAResult[]>(doc.qa_results ?? []);
   const [currentStatus, setCurrentStatus] = useState(doc.status);
 
@@ -77,19 +83,28 @@ export function DocumentEditor({ doc, clientId }: Props) {
       const result = await updateDocument({ docId: doc.id, bodyMd, status: "approved" });
       setQaResults(result.qaResults);
       setCurrentStatus(result.resolvedStatus);
-      if (result.resolvedStatus !== "approved") {
-        // QA blocked approval — refresh to show new status
-      }
       router.refresh();
     } finally {
       setSaving(false);
     }
   }
 
+  async function handleKill() {
+    if (!confirm("Mark this document as killed? It will be hidden from the active list.")) return;
+    await updateDocument({ docId: doc.id, bodyMd, status: "killed" });
+    router.push(`/clients/${clientId}/documents`);
+  }
+
   async function handleCopy() {
     await navigator.clipboard.writeText(bodyMd);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleCopyHtml() {
+    await navigator.clipboard.writeText(htmlRef.current);
+    setCopiedHtml(true);
+    setTimeout(() => setCopiedHtml(false), 2000);
   }
 
   function handleDownload() {
@@ -122,9 +137,17 @@ export function DocumentEditor({ doc, clientId }: Props) {
           <Button variant="ghost" size="sm" onClick={handleCopy} title="Copy markdown">
             {copied ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
           </Button>
+          <Button variant="ghost" size="sm" onClick={handleCopyHtml} title="Copy HTML (for CMS paste)">
+            {copiedHtml ? <Check className="size-3.5 text-green-500" /> : <Code2 className="size-3.5" />}
+          </Button>
           {editable && currentStatus !== "approved" && (
             <Button variant="outline" size="sm" onClick={handleApprove} disabled={saving}>
               Approve
+            </Button>
+          )}
+          {editable && currentStatus !== "killed" && (
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={handleKill}>
+              Kill
             </Button>
           )}
           {editable && (
@@ -160,9 +183,13 @@ export function DocumentEditor({ doc, clientId }: Props) {
       <TipTapEditor
         content={initialHtml}
         editable={editable}
-        onChange={(text) => {
-          setBodyMd(text);
+        onChange={(html) => {
+          htmlRef.current = html;
+          const md = turndown.turndown(html);
+          setBodyMd(md);
           setSaved(false);
+        }}
+        onChangeText={(text) => {
           setWordCount(text.trim().split(/\s+/).filter(Boolean).length);
         }}
       />

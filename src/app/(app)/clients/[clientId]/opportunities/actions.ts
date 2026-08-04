@@ -37,6 +37,45 @@ export async function setOpportunityStatus(id: string, status: string, clientId:
   revalidatePath(`/clients/${clientId}/opportunities`);
 }
 
+export async function addOppToPlan({
+  opportunityId,
+  planId,
+  clientId,
+  workingTitle,
+  scheduledDate,
+}: {
+  opportunityId: string;
+  planId: string;
+  clientId: string;
+  workingTitle: string;
+  scheduledDate: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: membership } = await supabase
+    .from("memberships").select("workspace_id").eq("user_id", user.id).single();
+  if (!membership) throw new Error("No workspace");
+
+  await supabase.from("plan_items").insert({
+    workspace_id: membership.workspace_id,
+    plan_id: planId,
+    client_id: clientId,
+    type: "post",
+    scheduled_date: scheduledDate,
+    working_title: workingTitle,
+    status: "planned",
+    opportunity_ids: [opportunityId],
+  });
+
+  // Mark opportunity as planned
+  await supabase.from("opportunities").update({ status: "planned" }).eq("id", opportunityId);
+
+  revalidatePath(`/clients/${clientId}/opportunities`);
+  revalidatePath(`/clients/${clientId}/plans/${planId}`);
+}
+
 export async function deleteOpportunity(id: string, clientId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

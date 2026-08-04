@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Users, Settings, LogOut, BookOpen } from "lucide-react";
+import { Users, Settings, LogOut, BookOpen, FileText } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   { title: "Clients", href: "/clients", icon: Users },
+  { title: "Documents", href: "/documents", icon: FileText },
   { title: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -50,7 +51,13 @@ export function AppSidebar() {
             {navItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
-                  isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
+                  isActive={
+                    item.href === "/clients"
+                      ? pathname.startsWith("/clients")
+                      : item.href === "/settings"
+                      ? pathname.startsWith("/settings")
+                      : pathname === item.href || pathname.startsWith(item.href + "/")
+                  }
                   tooltip={item.title}
                   render={<Link href={item.href} />}
                 >

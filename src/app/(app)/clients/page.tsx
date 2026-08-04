@@ -1,74 +1,76 @@
 import Link from "next/link";
-import { Plus, Globe, LayoutGrid } from "lucide-react";
+import { Plus, Globe, LayoutGrid, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { redirect } from "next/navigation";
 
-type Client = {
-  id: string;
-  name: string;
-  domain: string | null;
-  industry: string | null;
-  locale: string;
-  created_at: string;
-};
+type Props = { searchParams: Promise<{ q?: string }> };
 
-export default async function ClientsPage() {
+export default async function ClientsPage({ searchParams }: Props) {
+  const { q } = await searchParams;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: clients, error } = await supabase
+  let query = supabase
     .from("clients")
     .select("id, name, domain, industry, locale, created_at")
     .is("archived_at", null)
     .order("name");
 
-  if (error) {
-    console.error("Failed to fetch clients:", error);
+  if (q?.trim()) {
+    query = query.ilike("name", `%${q.trim()}%`);
   }
 
-  const clientList: Client[] = clients ?? [];
+  const { data: clients } = await query;
+  const clientList = clients ?? [];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Clients</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {clientList.length === 0
+            {clientList.length === 0 && !q
               ? "No clients yet — add your first one."
-              : `${clientList.length} client${clientList.length === 1 ? "" : "s"}`}
+              : `${clientList.length} client${clientList.length === 1 ? "" : "s"}${q ? ` matching "${q}"` : ""}`}
           </p>
         </div>
-        <Link
-          href="/clients/new"
-          className={cn(buttonVariants({ size: "sm" }))}
-        >
+        <Link href="/clients/new" className={cn(buttonVariants({ size: "sm" }))}>
           <Plus className="size-4 mr-1.5" />
           New client
         </Link>
       </div>
 
+      {/* Search */}
+      <form method="GET" className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+        <input
+          name="q"
+          defaultValue={q}
+          placeholder="Search clients…"
+          className="flex h-9 w-full rounded-md border border-input bg-transparent pl-8 pr-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        />
+      </form>
+
       {clientList.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-20 text-center">
           <LayoutGrid className="size-10 text-muted-foreground/40 mb-4" />
-          <p className="text-sm font-medium">No clients yet</p>
-          <p className="text-sm text-muted-foreground mt-1 mb-6">
-            Create a client to start building content plans.
-          </p>
-          <Link
-            href="/clients/new"
-            className={cn(buttonVariants({ size: "sm" }))}
-          >
-            <Plus className="size-4 mr-1.5" />
-            New client
-          </Link>
+          <p className="text-sm font-medium">{q ? "No clients match your search" : "No clients yet"}</p>
+          {!q && (
+            <>
+              <p className="text-sm text-muted-foreground mt-1 mb-6">
+                Create a client to start building content plans.
+              </p>
+              <Link href="/clients/new" className={cn(buttonVariants({ size: "sm" }))}>
+                <Plus className="size-4 mr-1.5" />
+                New client
+              </Link>
+            </>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -95,9 +97,7 @@ export default async function ClientsPage() {
                 </Badge>
               </div>
               {client.industry && (
-                <p className="text-xs text-muted-foreground mt-3">
-                  {client.industry}
-                </p>
+                <p className="text-xs text-muted-foreground mt-3">{client.industry}</p>
               )}
             </Link>
           ))}
