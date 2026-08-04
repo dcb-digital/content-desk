@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { AddItemForm } from "./add-item-form";
 import { DeleteItemButton } from "./delete-item-button";
 
@@ -89,6 +92,14 @@ export default async function PlanDetailPage({ params }: Props) {
                 <Badge variant={statusVariant} className="text-xs shrink-0">
                   {item.status.replace(/_/g, " ")}
                 </Badge>
+                {item.status === "planned" && (
+                  <Link
+                    href={`/clients/${clientId}/documents/generate?title=${encodeURIComponent(item.working_title)}&keyword=${encodeURIComponent(item.target_keyword ?? "")}&planItemId=${item.id}`}
+                    className={cn(buttonVariants({ size: "sm", variant: "outline" }), "text-xs shrink-0")}
+                  >
+                    Generate →
+                  </Link>
+                )}
                 <DeleteItemButton itemId={item.id} planId={planId} clientId={clientId} />
               </div>
             );

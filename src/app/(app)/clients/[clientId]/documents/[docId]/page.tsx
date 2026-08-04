@@ -12,7 +12,7 @@ export default async function DocumentPage({ params }: Props) {
 
   const { data: doc } = await supabase
     .from("documents")
-    .select("id, title, kind, status, body_md, created_at, updated_at")
+    .select("id, title, kind, status, body_md, qa_results, created_at, updated_at")
     .eq("id", docId)
     .eq("client_id", clientId)
     .single();

@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Globe, Calendar } from "lucide-react";
+import { Globe, Calendar, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type Props = { params: Promise<{ clientId: string }> };
 
@@ -43,7 +45,15 @@ export default async function ClientOverviewPage({ params }: Props) {
     <div className="space-y-6 max-w-3xl">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">{client.name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold">{client.name}</h1>
+            <Link
+              href={`/clients/${clientId}/edit`}
+              className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-7 text-muted-foreground")}
+            >
+              <Pencil className="size-3.5" />
+            </Link>
+          </div>
           <div className="flex items-center gap-3 mt-1">
             {client.domain && (
               <span className="text-sm text-muted-foreground flex items-center gap-1">

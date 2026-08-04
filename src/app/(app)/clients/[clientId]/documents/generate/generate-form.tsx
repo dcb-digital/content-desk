@@ -13,12 +13,22 @@ import { saveGeneratedDocument } from "./actions";
 type Props = {
   clientId: string;
   disabled?: boolean;
+  initialTitle?: string;
+  initialKeyword?: string;
+  planItemId?: string;
 };
 
-export function GenerateForm({ clientId, disabled }: Props) {
+const TASK_KEYS: Record<string, string> = {
+  post: "task_draft_post",
+  page: "task_draft_page",
+  refresh: "task_refresh",
+};
+
+export function GenerateForm({ clientId, disabled, initialTitle, initialKeyword, planItemId }: Props) {
   const router = useRouter();
-  const [workingTitle, setWorkingTitle] = useState("");
-  const [targetKeyword, setTargetKeyword] = useState("");
+  const [workingTitle, setWorkingTitle] = useState(initialTitle ?? "");
+  const [targetKeyword, setTargetKeyword] = useState(initialKeyword ?? "");
+  const [contentType, setContentType] = useState("post");
   const [editorHtml, setEditorHtml] = useState<string>("");
   const [phase, setPhase] = useState<"form" | "streaming" | "editing">("form");
   const [saving, setSaving] = useState(false);
@@ -47,7 +57,7 @@ export function GenerateForm({ clientId, disabled }: Props) {
     await complete("", {
       body: {
         clientId,
-        taskKey: "task_draft_post",
+        taskKey: TASK_KEYS[contentType] ?? "task_draft_post",
         taskVars: {
           workingTitle: workingTitle.trim(),
           targetKeyword: targetKeyword.trim(),
@@ -63,6 +73,7 @@ export function GenerateForm({ clientId, disabled }: Props) {
         clientId,
         title: workingTitle.trim(),
         bodyMd: bodyMdRef.current,
+        planItemId,
       });
       router.push(`/clients/${clientId}/documents/${docId}`);
     } catch {
@@ -98,6 +109,27 @@ export function GenerateForm({ clientId, disabled }: Props) {
             disabled={disabled || isLoading}
           />
         </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="contentType">Content type</Label>
+          <select
+            id="contentType"
+            value={contentType}
+            onChange={(e) => setContentType(e.target.value)}
+            disabled={disabled || isLoading}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <option value="post" className="bg-background">Blog post</option>
+            <option value="page" className="bg-background">Service / location page</option>
+            <option value="refresh" className="bg-background">Refresh existing page</option>
+          </select>
+        </div>
+
+        {planItemId && (
+          <p className="text-xs text-muted-foreground">
+            Linked to plan item — document will be connected to this plan.
+          </p>
+        )}
 
         <Button type="submit" disabled={disabled || !workingTitle.trim() || isLoading}>
           Generate draft

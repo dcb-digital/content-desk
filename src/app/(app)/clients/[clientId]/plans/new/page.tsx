@@ -43,11 +43,11 @@ export default async function NewPlanPage({ params }: Props) {
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="horizonDays">Horizon</label>
             <select
-              id="horizonDays" name="horizonDays"
+              id="horizonDays" name="horizonDays" defaultValue="30"
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <option value="7" className="bg-background">7 days</option>
-              <option value="30" className="bg-background" selected>30 days</option>
+              <option value="30" className="bg-background">30 days</option>
               <option value="60" className="bg-background">60 days</option>
               <option value="90" className="bg-background">90 days</option>
             </select>

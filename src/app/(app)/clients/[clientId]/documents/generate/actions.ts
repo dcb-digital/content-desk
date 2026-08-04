@@ -6,10 +6,12 @@ export async function saveGeneratedDocument({
   clientId,
   title,
   bodyMd,
+  planItemId,
 }: {
   clientId: string;
   title: string;
   bodyMd: string;
+  planItemId?: string;
 }): Promise<string> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -24,6 +26,7 @@ export async function saveGeneratedDocument({
     .insert({
       workspace_id: membership.workspace_id,
       client_id: clientId,
+      plan_item_id: planItemId ?? null,
       title: title || "Untitled draft",
       kind: "draft",
       status: "in_review",
@@ -33,5 +36,14 @@ export async function saveGeneratedDocument({
     .single();
 
   if (error) throw new Error(error.message);
+
+  // Mark the plan item as drafting if linked
+  if (planItemId) {
+    await supabase
+      .from("plan_items")
+      .update({ status: "drafting" })
+      .eq("id", planItemId);
+  }
+
   return data.id;
 }

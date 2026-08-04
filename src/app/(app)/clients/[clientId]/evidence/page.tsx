@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Database } from "lucide-react";
 import { AddSourceForm } from "./add-source-form";
 import { DeleteSourceButton } from "./delete-source-button";
@@ -75,9 +76,9 @@ export default async function EvidencePage({ params }: Props) {
               : null;
 
             return (
-              <div key={source.id} className="flex items-start gap-3 px-4 py-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{source.label}</p>
+              <div key={source.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors group">
+                <Link href={`/clients/${clientId}/evidence/${source.id}`} className="flex-1 min-w-0">
+                  <p className="text-sm font-medium group-hover:text-primary transition-colors">{source.label}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {PROVIDER_LABELS[source.provider] ?? source.provider}
                     {snap?.period_start && snap?.period_end && (
@@ -90,7 +91,7 @@ export default async function EvidencePage({ params }: Props) {
                   {source.staff_notes && (
                     <p className="text-xs text-muted-foreground mt-1 italic">{source.staff_notes}</p>
                   )}
-                </div>
+                </Link>
                 <DeleteSourceButton sourceId={source.id} clientId={clientId} />
               </div>
             );

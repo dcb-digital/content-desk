@@ -7,7 +7,13 @@ import { TipTapEditor } from "@/components/editor/tiptap-editor";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { updateDocument } from "./actions";
-import { Copy, Check, Download } from "lucide-react";
+import { Copy, Check, Download, AlertTriangle, Info } from "lucide-react";
+
+type QAResult = {
+  rule: string;
+  level: "flag" | "warn";
+  message: string;
+};
 
 type Doc = {
   id: string;
@@ -15,6 +21,7 @@ type Doc = {
   kind: string;
   status: string;
   body_md: string | null;
+  qa_results: QAResult[] | null;
   created_at: string;
   updated_at: string;
 };
@@ -23,6 +30,7 @@ const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secon
   planned: { label: "Planned", variant: "outline" },
   drafting: { label: "Drafting", variant: "secondary" },
   in_review: { label: "In review", variant: "default" },
+  qa_flagged: { label: "QA flagged", variant: "secondary" },
   approved: { label: "Approved", variant: "default" },
   exported: { label: "Exported", variant: "outline" },
   killed: { label: "Killed", variant: "outline" },
@@ -39,16 +47,23 @@ export function DocumentEditor({ doc, clientId }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [qaResults, setQaResults] = useState<QAResult[]>(doc.qa_results ?? []);
+  const [currentStatus, setCurrentStatus] = useState(doc.status);
 
   const initialHtml = doc.body_md ? marked.parse(doc.body_md, { async: false }) : "";
-  const status = STATUS_LABELS[doc.status] ?? { label: doc.status, variant: "outline" as const };
-  const editable = doc.status !== "exported" && doc.status !== "killed";
+  const status = STATUS_LABELS[currentStatus] ?? { label: currentStatus, variant: "outline" as const };
+  const editable = currentStatus !== "exported" && currentStatus !== "killed";
+
+  const flags = qaResults.filter((r) => r.level === "flag");
+  const warns = qaResults.filter((r) => r.level === "warn");
 
   async function handleSave() {
     setSaving(true);
     setSaved(false);
     try {
-      await updateDocument({ docId: doc.id, bodyMd, status: "in_review" });
+      const result = await updateDocument({ docId: doc.id, bodyMd, status: "in_review" });
+      setQaResults(result.qaResults);
+      setCurrentStatus(result.resolvedStatus);
       setSaved(true);
       router.refresh();
     } finally {
@@ -59,7 +74,12 @@ export function DocumentEditor({ doc, clientId }: Props) {
   async function handleApprove() {
     setSaving(true);
     try {
-      await updateDocument({ docId: doc.id, bodyMd, status: "approved" });
+      const result = await updateDocument({ docId: doc.id, bodyMd, status: "approved" });
+      setQaResults(result.qaResults);
+      setCurrentStatus(result.resolvedStatus);
+      if (result.resolvedStatus !== "approved") {
+        // QA blocked approval — refresh to show new status
+      }
       router.refresh();
     } finally {
       setSaving(false);
@@ -102,7 +122,7 @@ export function DocumentEditor({ doc, clientId }: Props) {
           <Button variant="ghost" size="sm" onClick={handleCopy} title="Copy markdown">
             {copied ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
           </Button>
-          {editable && doc.status !== "approved" && (
+          {editable && currentStatus !== "approved" && (
             <Button variant="outline" size="sm" onClick={handleApprove} disabled={saving}>
               Approve
             </Button>
@@ -114,6 +134,24 @@ export function DocumentEditor({ doc, clientId }: Props) {
           )}
         </div>
       </div>
+
+      {/* QA results */}
+      {qaResults.length > 0 && (
+        <div className="space-y-1.5">
+          {flags.map((r) => (
+            <div key={r.rule} className="flex items-start gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
+              <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
+              {r.message}
+            </div>
+          ))}
+          {warns.map((r) => (
+            <div key={r.rule} className="flex items-start gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-600 dark:text-yellow-400">
+              <Info className="size-3.5 shrink-0 mt-0.5" />
+              {r.message}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="text-xs text-muted-foreground text-right">
         {wordCount.toLocaleString()} words

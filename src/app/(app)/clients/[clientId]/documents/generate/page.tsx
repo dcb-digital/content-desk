@@ -2,15 +2,19 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { GenerateForm } from "./generate-form";
 
-type Props = { params: Promise<{ clientId: string }> };
+type Props = {
+  params: Promise<{ clientId: string }>;
+  searchParams: Promise<{ title?: string; keyword?: string; planItemId?: string }>;
+};
 
-export default async function GenerateDraftPage({ params }: Props) {
+export default async function GenerateDraftPage({ params, searchParams }: Props) {
   const { clientId } = await params;
+  const { title, keyword, planItemId } = await searchParams;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Check provider is configured
   const { data: membership } = await supabase
     .from("memberships").select("workspace_id").eq("user_id", user.id).single();
 
@@ -25,7 +29,6 @@ export default async function GenerateDraftPage({ params }: Props) {
   const hasProvider =
     settings?.providers && Object.keys(settings.providers).length > 0;
 
-  // Check objectives + knowledge are set
   const { data: objective } = await supabase
     .from("objectives")
     .select("summary_md")
@@ -69,7 +72,13 @@ export default async function GenerateDraftPage({ params }: Props) {
         </div>
       )}
 
-      <GenerateForm clientId={clientId} disabled={!hasProvider} />
+      <GenerateForm
+        clientId={clientId}
+        disabled={!hasProvider}
+        initialTitle={title}
+        initialKeyword={keyword}
+        planItemId={planItemId}
+      />
     </div>
   );
 }
