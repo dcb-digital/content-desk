@@ -28,26 +28,54 @@ const OPENAI_MODELS = [
 
 // Suggestions only — user can type any valid OpenRouter model ID
 const OPENROUTER_SUGGESTIONS = [
-  "anthropic/claude-sonnet-4-6",
+  // Anthropic
   "anthropic/claude-opus-4-6",
+  "anthropic/claude-sonnet-4-6",
   "anthropic/claude-haiku-4-5",
+  // OpenAI
   "openai/gpt-4o",
   "openai/gpt-4o-mini",
   "openai/o3",
   "openai/o3-mini",
+  "openai/o4-mini",
+  // Google
   "google/gemini-2.5-pro",
   "google/gemini-2.5-flash",
+  "google/gemini-2.5-flash-lite",
   "google/gemini-2.0-flash-001",
+  // DeepSeek
+  "deepseek/deepseek-r1",
+  "deepseek/deepseek-r1-0528",
+  "deepseek/deepseek-chat-v3-5",
+  "deepseek/deepseek-v3-base:free",
+  // Meta
   "meta-llama/llama-3.3-70b-instruct",
   "meta-llama/llama-3.1-405b-instruct",
-  "deepseek/deepseek-r1",
-  "deepseek/deepseek-chat-v3-5",
-  "qwen/qwen-2.5-72b-instruct",
-  "qwen/qvq-72b-preview",
+  "meta-llama/llama-4-maverick",
+  "meta-llama/llama-4-scout",
+  // Mistral
   "mistralai/mistral-large-2411",
   "mistralai/mistral-small-3.1-24b-instruct",
-  "x-ai/grok-3-mini-beta",
+  "mistralai/codestral-2501",
+  // xAI
   "x-ai/grok-3-beta",
+  "x-ai/grok-3-mini-beta",
+  // Qwen
+  "qwen/qwen-2.5-72b-instruct",
+  "qwen/qwen3-235b-a22b",
+  "qwen/qwen3-30b-a3b",
+  // Fable
+  "fable/fable-standard",
+  // Cohere
+  "cohere/command-r-plus-08-2024",
+  "cohere/command-r7b-12-2024",
+  // Perplexity
+  "perplexity/sonar-pro",
+  "perplexity/sonar",
+  // NovaSky / other
+  "neversleep/llama-3.1-lumimaid-70b",
+  "microsoft/phi-4",
+  "microsoft/phi-4-mini-instruct",
 ];
 
 type Props = {

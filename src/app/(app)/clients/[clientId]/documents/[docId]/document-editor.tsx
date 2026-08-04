@@ -34,7 +34,7 @@ export function DocumentEditor({ doc, clientId }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const initialHtml = doc.body_md ? (marked(doc.body_md) as string) : "";
+  const initialHtml = doc.body_md ? marked.parse(doc.body_md, { async: false }) : "";
   const status = STATUS_LABELS[doc.status] ?? { label: doc.status, variant: "outline" as const };
 
   async function handleSave() {
