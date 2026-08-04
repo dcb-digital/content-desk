@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AddItemForm } from "./add-item-form";
@@ -11,16 +11,6 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   post: "Blog post",
   page: "Service/location page",
   refresh: "Refresh",
-};
-
-const STATUS: Record<string, "default" | "secondary" | "outline"> = {
-  planned: "secondary",
-  briefed: "secondary",
-  brief_approved: "secondary",
-  drafting: "default",
-  in_review: "default",
-  approved: "default",
-  exported: "outline",
 };
 
 type Props = { params: Promise<{ clientId: string; planId: string }> };
@@ -70,7 +60,6 @@ export default async function PlanDetailPage({ params }: Props) {
       ) : (
         <div className="divide-y divide-border rounded-lg border border-border">
           {allItems.map((item) => {
-            const statusVariant = STATUS[item.status] ?? "outline";
             return (
               <div key={item.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="w-20 shrink-0 text-xs text-muted-foreground">
@@ -86,12 +75,10 @@ export default async function PlanDetailPage({ params }: Props) {
                     </p>
                   )}
                 </div>
-                <Badge variant="outline" className="text-xs shrink-0">
+                <span className="inline-flex h-5 shrink-0 items-center rounded-md border border-border bg-muted/40 px-1.5 text-xs font-medium text-muted-foreground whitespace-nowrap">
                   {ITEM_TYPE_LABELS[item.type] ?? item.type}
-                </Badge>
-                <Badge variant={statusVariant} className="text-xs shrink-0">
-                  {item.status.replace(/_/g, " ")}
-                </Badge>
+                </span>
+                <StatusBadge status={item.status} className="shrink-0" />
                 {item.status === "planned" && (
                   <div className="flex gap-1.5 shrink-0">
                     <Link

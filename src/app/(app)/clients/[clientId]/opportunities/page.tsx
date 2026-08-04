@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Lightbulb } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { AddOpportunityForm } from "./add-opportunity-form";
 import { StatusButton, DeleteOpportunityButton, AddToPlanButton } from "./opportunity-actions";
 
@@ -15,11 +14,16 @@ const TYPE_LABELS: Record<string, string> = {
   manual: "Manual",
 };
 
-const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
-  open: "default",
-  planned: "secondary",
-  dismissed: "outline",
-};
+/**
+ * Rows are already grouped under Open / Planned / Dismissed headings, so a status
+ * badge per row would be redundant. Colour goes on the score instead — that's the
+ * number the decision actually turns on.
+ */
+function scoreTone(score: number): string {
+  if (score >= 70) return "text-brand";
+  if (score >= 40) return "text-foreground";
+  return "text-muted-foreground";
+}
 
 type Props = { params: Promise<{ clientId: string }> };
 
@@ -119,15 +123,19 @@ function OppSection({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-sm font-medium">{opp.title}</p>
-                <Badge variant={STATUS_VARIANTS[opp.status] ?? "outline"} className="text-xs">
+                {/* Type is a category, not a state — neutral chip, no semantic colour */}
+                <span className="inline-flex h-5 items-center rounded-md border border-border bg-muted/40 px-1.5 text-xs font-medium text-muted-foreground whitespace-nowrap">
                   {TYPE_LABELS[opp.type] ?? opp.type}
-                </Badge>
+                </span>
               </div>
               {opp.rationale && (
                 <p className="text-xs text-muted-foreground mt-0.5">{opp.rationale}</p>
               )}
               <p className="text-xs text-muted-foreground mt-0.5">
-                Score: {opp.score} · {opp.suggested_type}
+                <span className={`font-mono tabular-nums font-medium ${scoreTone(opp.score)}`}>
+                  {opp.score}
+                </span>{" "}
+                · {opp.suggested_type}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">

@@ -2,15 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { CalendarDays, Plus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-const STATUS: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-  draft: { label: "Draft", variant: "secondary" },
-  approved: { label: "Approved", variant: "default" },
-  archived: { label: "Archived", variant: "outline" },
-};
 
 type Props = { params: Promise<{ clientId: string }> };
 
@@ -78,7 +72,6 @@ export default async function PlansPage({ params }: Props) {
       ) : (
         <div className="divide-y divide-border rounded-lg border border-border">
           {allPlans.map((plan) => {
-            const s = STATUS[plan.status] ?? { label: plan.status, variant: "outline" as const };
             return (
               <Link
                 key={plan.id}
@@ -96,7 +89,7 @@ export default async function PlansPage({ params }: Props) {
                     })} · {countMap.get(plan.id) ?? 0} items
                   </p>
                 </div>
-                <Badge variant={s.variant}>{s.label}</Badge>
+                <StatusBadge status={plan.status} />
               </Link>
             );
           })}
