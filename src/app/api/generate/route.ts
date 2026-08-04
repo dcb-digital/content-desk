@@ -50,19 +50,34 @@ export async function POST(request: Request) {
     );
   }
 
-  // Assemble prompt
-  const assembled = await assemblePrompt(
-    clientId,
-    workspaceId,
-    taskKey,
-    taskVars,
-  );
-
-  // Get model
-  const { model, provider, modelId } = await getModel(
-    settings.providers as Record<string, { encKey: string; model: string }>,
-    settings.default_provider as string,
-  );
+  // Assemble prompt + resolve the model. Both throw on misconfiguration (a prompt
+  // key missing from the DB, an unknown provider) — return the reason instead of
+  // letting it surface as an opaque 500 with an empty stream.
+  let assembled: Awaited<ReturnType<typeof assemblePrompt>>;
+  let model: Awaited<ReturnType<typeof getModel>>["model"];
+  let provider: string;
+  let modelId: string;
+  try {
+    assembled = await assemblePrompt(clientId, workspaceId, taskKey, taskVars);
+    ({ model, provider, modelId } = await getModel(
+      settings.providers as Record<string, { encKey: string; model: string }>,
+      settings.default_provider as string,
+    ));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Generation setup failed";
+    await supabase.from("generation_logs").insert({
+      workspace_id: workspaceId,
+      client_id: clientId,
+      document_id: documentId ?? null,
+      action: "draft",
+      provider: (settings.default_provider as "anthropic") ?? "anthropic",
+      model: "n/a",
+      success: false,
+      error: message,
+      user_id: user.id,
+    });
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 
   const startedAt = Date.now();
 

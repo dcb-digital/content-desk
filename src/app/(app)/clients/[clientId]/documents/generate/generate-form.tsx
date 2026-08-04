@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCompletion } from "ai/react";
 import { marked } from "marked";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,7 +69,17 @@ export function GenerateForm({
       setEditorHtml(html as string);
       setPhase("editing");
     },
-    onError: () => {
+    onError: (error) => {
+      // Don't fail silently — a missing prompt key or unconfigured provider used
+      // to just reset the form, which reads as "nothing happened"
+      let message = error.message || "Generation failed.";
+      try {
+        const parsed = JSON.parse(message) as { error?: string };
+        if (parsed.error) message = parsed.error;
+      } catch {
+        // not JSON — use the raw message
+      }
+      toast.error(message);
       setPhase("form");
     },
   });
