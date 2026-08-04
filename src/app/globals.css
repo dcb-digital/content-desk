@@ -8,6 +8,16 @@
     --font-heading: var(--font-geist-sans);
     --font-sans: var(--font-geist-sans);
     --font-mono: var(--font-geist-mono);
+
+    /* Type scale nudged up ~1px from the Tailwind defaults — the UI ran small,
+       especially the dense evidence tables. Line heights are unitless ratios,
+       so they scale with these automatically. */
+    --text-xs: 0.8125rem; /* 13px, was 12 */
+    --text-sm: 0.9375rem; /* 15px, was 14 */
+    --text-base: 1.0625rem; /* 17px, was 16 */
+    --text-lg: 1.1875rem; /* 19px, was 18 */
+    --text-xl: 1.3125rem; /* 21px, was 20 */
+    --text-2xl: 1.5625rem; /* 25px, was 24 */
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);

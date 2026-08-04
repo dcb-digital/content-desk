@@ -2,12 +2,17 @@
  * Assembles the prompt message array for a generation call.
  * Fixed order (brief §6.6):
  *   1. system_rules  2. objectives_snapshot  3. pinned knowledge
- *   4. retrieved knowledge (Week 2)  5. evidence excerpts (Week 2)
+ *   4. retrieved knowledge (Week 2)  5. evidence excerpts
  *   6. plan item / brief (Week 2)  7. task instruction
  *
  * All prompts fetched from DB — improving quality never requires a deploy.
  */
 import { createClient } from "@/lib/supabase/server";
+import { excerptSnapshot } from "@/lib/evidence/excerpt";
+import type { NormalizedEvidence } from "@/db/schema";
+
+/** Most recent snapshots considered (newest first). */
+const MAX_SNAPSHOTS = 3;
 
 export type AssembledPrompt = {
   system: string;
@@ -63,6 +68,14 @@ export async function assemblePrompt(
     .eq("pinned", true)
     .order("type");
 
+  // 5. Evidence excerpts — latest snapshots, each row tagged with its snapshot ref
+  const { data: snapshots } = await supabase
+    .from("evidence_snapshots")
+    .select("id, provider, period_start, period_end, data")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false })
+    .limit(MAX_SNAPSHOTS);
+
   // Build the user-content block
   const sections: string[] = [];
 
@@ -79,6 +92,30 @@ export async function assemblePrompt(
     sections.push(`## KNOWLEDGE\n${docsBlock}`);
   } else {
     sections.push("## KNOWLEDGE\n[No pinned knowledge docs — add and pin them in the Knowledge tab]");
+  }
+
+  const evidenceBlocks = (snapshots ?? [])
+    .map((s) =>
+      excerptSnapshot(s.data as NormalizedEvidence, {
+        id: s.id,
+        provider: s.provider as string,
+        periodStart: s.period_start as string | null,
+        periodEnd: s.period_end as string | null,
+      }),
+    )
+    .filter((b): b is string => b !== null);
+
+  if (evidenceBlocks.length > 0) {
+    sections.push(
+      `## EVIDENCE\nEvery metric you state must cite the ref in brackets, e.g. [evidence:<id>]. ` +
+        `If a figure is not in these excerpts, say the data is unavailable — never estimate one.\n\n` +
+        evidenceBlocks.join("\n\n"),
+    );
+  } else {
+    sections.push(
+      "## EVIDENCE\n[No evidence snapshots for this client — upload exports in the Evidence tab. " +
+        "State no metrics at all; say the data is unavailable.]",
+    );
   }
 
   // 7. Task instruction (interpolate vars)

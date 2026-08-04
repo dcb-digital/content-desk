@@ -43,6 +43,16 @@ create or replace trigger on_auth_user_created
   for each row execute procedure public.handle_new_user();
 ```
 
+## Supabase Storage — evidence uploads (applied; idempotent)
+Private `evidence-files` bucket + workspace-scoped RLS live in `supabase/evidence-storage.sql`:
+```
+psql "$DATABASE_URL" -f supabase/evidence-storage.sql
+```
+Path layout `{workspace_id}/{client_id}/{uuid}-{file}` — the leading workspace segment is what
+the policies check, so it must stay first. Files upload browser → Storage directly; the Server
+Action receives only object paths, keeping large exports out of the request body (Vercel caps
+those at ~4.5MB). Deleting a source removes its objects.
+
 ## DB
 - Drizzle schema: /src/db/schema.ts (do not modify enums without a migration)
 - Migrations: npx drizzle-kit generate && npx drizzle-kit migrate

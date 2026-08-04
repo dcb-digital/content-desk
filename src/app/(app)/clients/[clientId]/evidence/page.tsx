@@ -21,6 +21,14 @@ export default async function EvidencePage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Needed client-side: storage paths are workspace-scoped (see evidence-storage.sql)
+  const { data: membership } = await supabase
+    .from("memberships")
+    .select("workspace_id")
+    .eq("user_id", user.id)
+    .single();
+  if (!membership) redirect("/login");
+
   const { data: sources } = await supabase
     .from("evidence_sources")
     .select("id, label, provider, staff_notes, created_at")
@@ -54,7 +62,7 @@ export default async function EvidencePage({ params }: Props) {
               : `${allSources.length} source${allSources.length === 1 ? "" : "s"}`}
           </p>
         </div>
-        <AddSourceForm clientId={clientId} />
+        <AddSourceForm clientId={clientId} workspaceId={membership.workspace_id} />
       </div>
 
       {allSources.length === 0 ? (
@@ -62,9 +70,9 @@ export default async function EvidencePage({ params }: Props) {
           <Database className="size-9 text-muted-foreground/40 mb-3" />
           <p className="text-sm font-medium">No evidence sources</p>
           <p className="text-sm text-muted-foreground mt-1 mb-5">
-            Paste GSC, Ahrefs, or SEMrush CSV exports to ground your content in real data.
+            Drag in GSC, Ahrefs, SEMrush or GA4 CSV exports to ground your content in real data.
           </p>
-          <AddSourceForm clientId={clientId} />
+          <AddSourceForm clientId={clientId} workspaceId={membership.workspace_id} />
         </div>
       ) : (
         <div className="divide-y divide-border rounded-lg border border-border">

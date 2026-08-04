@@ -269,7 +269,7 @@ export const evidenceSnapshots = pgTable(
     provider: evidenceProviderId("provider").notNull(),
     periodStart: date("period_start"),
     periodEnd: date("period_end"),
-    /** { queries: [...], pages: [...], keywords: [...], contentGap: [...] } — see NormalizedEvidence type */
+    /** { queries, pages, keywords, contentGap, backlinks, dimensions, unmapped } — see NormalizedEvidence */
     data: jsonb("data").$type<NormalizedEvidence>().notNull(),
     rowCounts: jsonb("row_counts").$type<Record<string, number>>().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -277,11 +277,129 @@ export const evidenceSnapshots = pgTable(
   (t) => [index("evidence_snapshots_client_idx").on(t.clientId)],
 );
 
+/**
+ * Any column the parser couldn't map to a typed field is preserved verbatim here,
+ * keyed by its original header. Guarantees an import never silently loses data.
+ */
+export type EvidenceExtras = { extra?: Record<string, string> };
+
+/** Per-query rows (GSC). `*Prev` fields come from date-comparison exports. */
+export type EvidenceQueryRow = {
+  query: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+  clicksPrev?: number;
+  impressionsPrev?: number;
+  ctrPrev?: number;
+  positionPrev?: number;
+  /** secondary dimensions when the export includes them */
+  page?: string;
+  country?: string;
+  device?: string;
+  date?: string;
+  searchAppearance?: string;
+} & EvidenceExtras;
+
+/** Per-URL rows (GSC pages, GA4 landing pages / page paths). */
+export type EvidencePageRow = {
+  url: string;
+  title?: string;
+  clicks?: number;
+  impressions?: number;
+  ctr?: number;
+  position?: number;
+  clicksPrev?: number;
+  impressionsPrev?: number;
+  sessions?: number;
+  users?: number;
+  newUsers?: number;
+  views?: number;
+  engagementRate?: number;
+  bounceRate?: number;
+  avgEngagementTimeSec?: number;
+  eventCount?: number;
+  conversions?: number;
+  revenue?: number;
+} & EvidenceExtras;
+
+/** Keyword rows (Ahrefs, SEMrush, keyword research exports). */
+export type EvidenceKeywordRow = {
+  keyword: string;
+  volume?: number;
+  position?: number;
+  previousPosition?: number;
+  url?: string;
+  difficulty?: number;
+  cpc?: number;
+  traffic?: number;
+  trafficValue?: number;
+  trafficPercent?: number;
+  intent?: string;
+  parentTopic?: string;
+  serpFeatures?: string;
+  competitiveDensity?: number;
+  results?: number;
+  country?: string;
+  trend?: string;
+} & EvidenceExtras;
+
+/** One row per (keyword, competitor) pair from content-gap exports. */
+export type EvidenceContentGapRow = {
+  keyword: string;
+  competitor: string;
+  volume?: number;
+  competitorPosition?: number;
+  ourPosition?: number;
+} & EvidenceExtras;
+
+/** Backlink / referring-page exports. */
+export type EvidenceBacklinkRow = {
+  sourceUrl: string;
+  sourceTitle?: string;
+  targetUrl?: string;
+  anchor?: string;
+  domainRating?: number;
+  authorityScore?: number;
+  nofollow?: boolean;
+  firstSeen?: string;
+  lastSeen?: string;
+} & EvidenceExtras;
+
+/**
+ * Non-URL breakdowns: GSC countries/devices/dates/search appearance,
+ * GA4 channel groups, source/medium, etc.
+ */
+export type EvidenceDimensionRow = {
+  /** the dimension's column name, e.g. "country", "device", "date" */
+  dimension: string;
+  value: string;
+  clicks?: number;
+  impressions?: number;
+  ctr?: number;
+  position?: number;
+  sessions?: number;
+  users?: number;
+  conversions?: number;
+  revenue?: number;
+} & EvidenceExtras;
+
+/** A file whose shape we couldn't classify — kept verbatim so nothing is dropped. */
+export type EvidenceUnmappedTable = {
+  label?: string;
+  headers: string[];
+  rows: Record<string, string>[];
+};
+
 export type NormalizedEvidence = {
-  queries?: { query: string; clicks: number; impressions: number; ctr: number; position: number }[];
-  pages?: { url: string; clicks?: number; impressions?: number; sessions?: number }[];
-  keywords?: { keyword: string; volume?: number; position?: number; url?: string; difficulty?: number }[];
-  contentGap?: { keyword: string; volume?: number; competitor: string }[];
+  queries?: EvidenceQueryRow[];
+  pages?: EvidencePageRow[];
+  keywords?: EvidenceKeywordRow[];
+  contentGap?: EvidenceContentGapRow[];
+  backlinks?: EvidenceBacklinkRow[];
+  dimensions?: EvidenceDimensionRow[];
+  unmapped?: EvidenceUnmappedTable[];
 };
 
 /* -------------------------- Opportunities -------------------------- */
