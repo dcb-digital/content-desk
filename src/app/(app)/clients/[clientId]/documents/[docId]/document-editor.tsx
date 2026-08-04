@@ -7,6 +7,7 @@ import { TipTapEditor } from "@/components/editor/tiptap-editor";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { updateDocument } from "./actions";
+import { Copy, Check } from "lucide-react";
 
 type Doc = {
   id: string;
@@ -19,6 +20,7 @@ type Doc = {
 };
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
+  planned: { label: "Planned", variant: "outline" },
   drafting: { label: "Drafting", variant: "secondary" },
   in_review: { label: "In review", variant: "default" },
   approved: { label: "Approved", variant: "default" },
@@ -31,11 +33,16 @@ type Props = { doc: Doc; clientId: string };
 export function DocumentEditor({ doc, clientId }: Props) {
   const router = useRouter();
   const [bodyMd, setBodyMd] = useState(doc.body_md ?? "");
+  const [wordCount, setWordCount] = useState(() =>
+    doc.body_md ? doc.body_md.trim().split(/\s+/).filter(Boolean).length : 0
+  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const initialHtml = doc.body_md ? marked.parse(doc.body_md, { async: false }) : "";
   const status = STATUS_LABELS[doc.status] ?? { label: doc.status, variant: "outline" as const };
+  const editable = doc.status !== "exported" && doc.status !== "killed";
 
   async function handleSave() {
     setSaving(true);
@@ -59,39 +66,53 @@ export function DocumentEditor({ doc, clientId }: Props) {
     }
   }
 
+  async function handleCopy() {
+    await navigator.clipboard.writeText(bodyMd);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">{doc.title}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             {doc.kind} ·{" "}
             {new Date(doc.updated_at).toLocaleDateString("en-AU", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
+              day: "numeric", month: "short", year: "numeric",
             })}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           <Badge variant={status.variant}>{status.label}</Badge>
-          {doc.status !== "approved" && (
+          <Button variant="ghost" size="sm" onClick={handleCopy} title="Copy markdown">
+            {copied ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
+          </Button>
+          {editable && doc.status !== "approved" && (
             <Button variant="outline" size="sm" onClick={handleApprove} disabled={saving}>
               Approve
             </Button>
           )}
-          <Button size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? "Saving…" : saved ? "Saved" : "Save"}
-          </Button>
+          {editable && (
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
+            </Button>
+          )}
         </div>
+      </div>
+
+      <div className="text-xs text-muted-foreground text-right">
+        {wordCount.toLocaleString()} words
       </div>
 
       <TipTapEditor
         content={initialHtml}
-        editable={doc.status !== "exported" && doc.status !== "killed"}
+        editable={editable}
         onChange={(text) => {
           setBodyMd(text);
           setSaved(false);
+          setWordCount(text.trim().split(/\s+/).filter(Boolean).length);
         }}
       />
     </div>
