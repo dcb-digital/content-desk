@@ -7,11 +7,13 @@ export async function saveGeneratedDocument({
   title,
   bodyMd,
   planItemId,
+  kind = "draft",
 }: {
   clientId: string;
   title: string;
   bodyMd: string;
   planItemId?: string;
+  kind?: "brief" | "draft";
 }): Promise<string> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -27,9 +29,9 @@ export async function saveGeneratedDocument({
       workspace_id: membership.workspace_id,
       client_id: clientId,
       plan_item_id: planItemId ?? null,
-      title: title || "Untitled draft",
-      kind: "draft",
-      status: "in_review",
+      title: title || (kind === "brief" ? "Untitled brief" : "Untitled draft"),
+      kind,
+      status: kind === "brief" ? "briefed" : "in_review",
       body_md: bodyMd,
     })
     .select("id")

@@ -4,12 +4,12 @@ import { GenerateForm } from "./generate-form";
 
 type Props = {
   params: Promise<{ clientId: string }>;
-  searchParams: Promise<{ title?: string; keyword?: string; planItemId?: string }>;
+  searchParams: Promise<{ title?: string; keyword?: string; planItemId?: string; briefId?: string; briefContent?: string }>;
 };
 
 export default async function GenerateDraftPage({ params, searchParams }: Props) {
   const { clientId } = await params;
-  const { title, keyword, planItemId } = await searchParams;
+  const { title, keyword, planItemId, briefId, briefContent } = await searchParams;
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -45,7 +45,9 @@ export default async function GenerateDraftPage({ params, searchParams }: Props)
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Generate draft</h2>
+        <h2 className="text-lg font-semibold">
+          {briefId ? "Generate draft from brief" : "Generate content"}
+        </h2>
         <p className="text-sm text-muted-foreground">
           Grounded in this client&apos;s pinned knowledge and current objectives.
         </p>
@@ -78,6 +80,8 @@ export default async function GenerateDraftPage({ params, searchParams }: Props)
         initialTitle={title}
         initialKeyword={keyword}
         planItemId={planItemId}
+        briefId={briefId}
+        initialBriefContent={briefContent}
       />
     </div>
   );

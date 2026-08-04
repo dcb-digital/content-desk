@@ -3,29 +3,40 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import { useEffect } from "react";
+import { useEffect, forwardRef, useImperativeHandle } from "react";
 import { cn } from "@/lib/utils";
 import { EditorToolbar } from "./editor-toolbar";
+
+export type TipTapEditorHandle = {
+  getSelectedText: () => string;
+  getSelectionRange: () => { from: number; to: number } | null;
+  replaceRange: (from: number, to: number, text: string) => void;
+};
 
 type Props = {
   content?: string; // HTML string
   editable?: boolean;
   onChange?: (html: string) => void;
   onChangeText?: (text: string) => void;
+  onSelectionUpdate?: (hasSelection: boolean) => void;
   className?: string;
   placeholder?: string;
   showToolbar?: boolean;
 };
 
-export function TipTapEditor({
-  content,
-  editable = true,
-  onChange,
-  onChangeText,
-  className,
-  placeholder = "Start writing…",
-  showToolbar = true,
-}: Props) {
+export const TipTapEditor = forwardRef<TipTapEditorHandle, Props>(function TipTapEditor(
+  {
+    content,
+    editable = true,
+    onChange,
+    onChangeText,
+    onSelectionUpdate,
+    className,
+    placeholder = "Start writing…",
+    showToolbar = true,
+  },
+  ref,
+) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -51,9 +62,31 @@ export function TipTapEditor({
       onChange?.(editor.getHTML());
       onChangeText?.(editor.getText());
     },
+    onSelectionUpdate: ({ editor }) => {
+      const { from, to } = editor.state.selection;
+      onSelectionUpdate?.(from !== to);
+    },
   });
 
-  // Re-set content when it changes externally (e.g., streaming complete)
+  useImperativeHandle(ref, () => ({
+    getSelectedText() {
+      if (!editor) return "";
+      const { from, to } = editor.state.selection;
+      return editor.state.doc.textBetween(from, to, " ");
+    },
+    getSelectionRange() {
+      if (!editor) return null;
+      const { from, to } = editor.state.selection;
+      if (from === to) return null;
+      return { from, to };
+    },
+    replaceRange(from: number, to: number, text: string) {
+      if (!editor) return;
+      editor.chain().focus().insertContentAt({ from, to }, text).run();
+    },
+  }));
+
+  // Re-set content when it changes externally (e.g., restore version, streaming complete)
   useEffect(() => {
     if (!editor || content === undefined) return;
     const currentHTML = editor.getHTML();
@@ -79,4 +112,4 @@ export function TipTapEditor({
       </div>
     </div>
   );
-}
+});

@@ -59,7 +59,7 @@ export async function updateDocument({
       .eq("id", docId);
   }
 
-  revalidatePath(`/clients/${docId}`);
+  revalidatePath(`/clients`);
   return { qaResults, resolvedStatus };
 }
 
