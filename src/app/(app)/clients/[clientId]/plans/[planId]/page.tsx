@@ -93,12 +93,20 @@ export default async function PlanDetailPage({ params }: Props) {
                   {item.status.replace(/_/g, " ")}
                 </Badge>
                 {item.status === "planned" && (
-                  <Link
-                    href={`/clients/${clientId}/documents/generate?title=${encodeURIComponent(item.working_title)}&keyword=${encodeURIComponent(item.target_keyword ?? "")}&planItemId=${item.id}`}
-                    className={cn(buttonVariants({ size: "sm", variant: "outline" }), "text-xs shrink-0")}
-                  >
-                    Generate →
-                  </Link>
+                  <div className="flex gap-1.5 shrink-0">
+                    <Link
+                      href={`/clients/${clientId}/documents/generate?title=${encodeURIComponent(item.working_title)}&keyword=${encodeURIComponent(item.target_keyword ?? "")}&planItemId=${item.id}&type=brief`}
+                      className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-xs")}
+                    >
+                      Brief →
+                    </Link>
+                    <Link
+                      href={`/clients/${clientId}/documents/generate?title=${encodeURIComponent(item.working_title)}&keyword=${encodeURIComponent(item.target_keyword ?? "")}&planItemId=${item.id}`}
+                      className={cn(buttonVariants({ size: "sm", variant: "outline" }), "text-xs")}
+                    >
+                      Draft →
+                    </Link>
+                  </div>
                 )}
                 <DeleteItemButton itemId={item.id} planId={planId} clientId={clientId} />
               </div>

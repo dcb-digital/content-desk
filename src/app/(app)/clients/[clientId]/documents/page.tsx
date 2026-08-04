@@ -8,7 +8,10 @@ import { cn } from "@/lib/utils";
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
   planned: { label: "Planned", variant: "outline" },
+  briefed: { label: "Brief", variant: "secondary" },
+  brief_approved: { label: "Brief approved", variant: "secondary" },
   drafting: { label: "Drafting", variant: "secondary" },
+  qa_flagged: { label: "QA flagged", variant: "secondary" },
   in_review: { label: "In review", variant: "default" },
   approved: { label: "Approved", variant: "default" },
   exported: { label: "Exported", variant: "outline" },

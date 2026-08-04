@@ -6,6 +6,8 @@ import { FileText } from "lucide-react";
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
   planned: { label: "Planned", variant: "outline" },
+  briefed: { label: "Brief", variant: "secondary" },
+  brief_approved: { label: "Brief approved", variant: "secondary" },
   drafting: { label: "Drafting", variant: "secondary" },
   in_review: { label: "In review", variant: "default" },
   qa_flagged: { label: "QA flagged", variant: "secondary" },

@@ -286,6 +286,25 @@ export function DocumentEditor({ doc, clientId }: Props) {
               Approve
             </Button>
           )}
+          {!isBrief && currentStatus === "approved" && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={saving}
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  await updateDocument({ docId: doc.id, bodyMd, status: "exported" });
+                  setCurrentStatus("exported");
+                  router.refresh();
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              Mark exported
+            </Button>
+          )}
           {editable && currentStatus !== "killed" && (
             <Button
               variant="ghost"

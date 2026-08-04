@@ -22,6 +22,8 @@ type Props = {
   /** When set, we're generating a draft from an approved brief */
   briefId?: string;
   initialBriefContent?: string;
+  /** Pre-select a content type: "brief" | "post" | "page" | "refresh" */
+  initialType?: string;
 };
 
 const TASK_KEYS: Record<string, string> = {
@@ -40,13 +42,16 @@ export function GenerateForm({
   planItemId,
   briefId,
   initialBriefContent,
+  initialType,
 }: Props) {
   const router = useRouter();
   const isBriefMode = Boolean(briefId);
 
   const [workingTitle, setWorkingTitle] = useState(initialTitle ?? "");
   const [targetKeyword, setTargetKeyword] = useState(initialKeyword ?? "");
-  const [contentType, setContentType] = useState(isBriefMode ? "draft_from_brief" : "post");
+  const [contentType, setContentType] = useState(
+    isBriefMode ? "draft_from_brief" : (initialType ?? "post")
+  );
   const [editorHtml, setEditorHtml] = useState<string>("");
   const [phase, setPhase] = useState<"form" | "streaming" | "editing">("form");
   const [saving, setSaving] = useState(false);

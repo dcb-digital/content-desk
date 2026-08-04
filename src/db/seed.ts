@@ -97,45 +97,90 @@ Rules:
   },
   {
     key: "task_brief",
-    notes: "Generates a content brief for one plan item.",
-    body: `TASK: Write a content brief for the plan item above.
+    notes: "Generates a content brief in markdown prose for human review before drafting.",
+    body: `TASK: Write a content brief in markdown.
 
-Output JSON:
-{ "primaryKeyword": "...", "secondaryKeywords": ["..."], "searchIntent": "...", "audience": "...", "angle": "one sentence on the unique angle", "outline": [{ "heading": "H2 text", "notes": "what to cover", "children": [{ "heading": "H3", "notes": "..." }] }], "wordCountTarget": 1200, "internalLinkCandidates": [{ "url": "...", "anchorIdea": "..." }], "mustInclude": ["client proof points / offers to weave in"], "mustAvoid": ["banned claims / competitor mentions to avoid"], "evidenceNotes": ["what the data says that shapes this piece"] }
+Working title: {{workingTitle}}
+Target keyword: {{targetKeyword}}
 
-internalLinkCandidates may only use URLs present in EVIDENCE pages. mustAvoid must include every relevant banned claim.`,
+Output a structured brief document in markdown — no JSON. Sections to include:
+
+## Brief: {{workingTitle}}
+
+**Primary keyword:** (the exact target keyword)
+**Secondary keywords:** (3-5 related terms to cover)
+**Search intent:** (informational / commercial / transactional / local)
+**Word count target:** (recommend 900-1400 for posts, 600-900 for pages)
+**Audience:** (who is reading this and what they need)
+
+## Angle & hook
+One paragraph: what makes this piece uniquely useful, what the reader gets by the end.
+
+## Outline
+H2 and H3 headings with brief notes on what each section should cover. Be specific.
+
+## Must include
+- Bullet list of client proof points, offers, or facts from the knowledge docs.
+
+## Must avoid
+- Bullet list of banned claims, competitor names, unverifiable stats.
+
+## Evidence notes
+- What the evidence data says that shapes this piece.
+
+Only reference facts from KNOWLEDGE and EVIDENCE sections. Flag anything unverifiable with [VERIFY].`,
   },
   {
     key: "task_draft_post",
-    notes: "Writes the full article from an approved brief.",
-    body: `TASK: Write the full article from the approved brief above.
+    notes: "Writes the full blog post article in markdown prose.",
+    body: `TASK: Write a complete blog post article in markdown.
 
-Output JSON:
-{ "titleOptions": ["...", "...", "..."], "metaTitle": "≤60 chars", "metaDescription": "≤155 chars", "slug": "kebab-case", "bodyMd": "full article in markdown following the brief outline", "faq": [{ "q": "...", "a": "..." }], "internalLinks": [{ "url": "...", "anchor": "...", "placement": "which section" }], "cta": { "heading": "...", "body": "...", "buttonText": "..." }, "imagePrompts": ["..."], "evidenceUsed": ["plain-English notes on which evidence shaped which claims"] }
+Working title: {{workingTitle}}
+Target keyword: {{targetKeyword}}
 
-bodyMd rules: follow the brief outline exactly (H2/H3 structure), hit the word count ±15%, primary keyword in the first 100 words, write [NEEDS DATA: x] for any figure you don't have. FAQ answers ≤80 words each.`,
+Output rules — markdown prose ONLY, no JSON, no preamble:
+1. Start with a single H1 matching or closely adapting the working title.
+2. Opening paragraph (≤80 words): hook the reader, include the target keyword naturally.
+3. Use H2 for main sections (3-5), H3 for subsections where needed.
+4. 900-1400 words total depending on topic complexity.
+5. Include the target keyword in the first 100 words and 2-3 more times naturally.
+6. Write [NEEDS DATA: description] wherever you would need a statistic or number you cannot verify from the KNOWLEDGE or EVIDENCE sections.
+7. End with a brief conclusion and a plain call-to-action paragraph (no heading needed).
+8. Do NOT include meta title, meta description, JSON, or any non-article content.`,
   },
   {
     key: "task_draft_page",
-    notes: "Service/location page package.",
-    body: `TASK: Produce a page build package for the plan item above (service/location/money page).
+    notes: "Service/location page copy in markdown prose.",
+    body: `TASK: Write the copy for a service or location page in markdown.
 
-Output JSON:
-{ "metaTitle": "≤60 chars", "metaDescription": "≤155 chars", "h1": "...", "suggestedUrl": "/path", "sections": { "hero": { "headline": "...", "subhead": "...", "body": "..." }, "trustProof": "md — ONLY from proof_case_studies knowledge", "services": "md — what's included", "process": "md — how it works, steps", "faq": [{ "q": "...", "a": "..." }], "cta": { "heading": "...", "body": "...", "buttonText": "..." } }, "schemaJsonLd": [{ ...Service/FAQPage/LocalBusiness fragments as applicable... }], "internalLinks": [{ "url": "...", "anchor": "..." }], "evidenceUsed": ["..."] }
+Working title: {{workingTitle}}
+Target keyword: {{targetKeyword}}
 
-trustProof may contain ONLY claims present in knowledge docs. schemaJsonLd must be valid JSON-LD; omit LocalBusiness if no location data in knowledge.`,
+Output rules — markdown prose ONLY, no JSON:
+1. H1 at the top.
+2. Sections: Hero/intro, Services included, Process/how it works, Trust & proof, FAQ (3-5 Q&As), Call to action.
+3. Trust & proof section: use ONLY claims present in the knowledge docs.
+4. 600-900 words of body copy (FAQ excluded).
+5. Target keyword in H1 and opening paragraph.
+6. Write [NEEDS DATA: description] for unverifiable numbers.
+7. Plain markdown — no JSON, no meta tags in the output.`,
   },
   {
     key: "task_refresh",
-    notes: "Refresh/rewrite of an existing URL.",
-    body: `TASK: Refresh the existing page above.
+    notes: "Refresh/rewrite of an existing URL in markdown prose.",
+    body: `TASK: Refresh and rewrite the existing page in markdown.
 
-Inputs: current URL, its current content (provided), and evidence showing why it's underperforming.
+Working title: {{workingTitle}}
+Target keyword: {{targetKeyword}}
 
-Output JSON:
-{ "diagnosis": ["what's wrong, each point tied to evidence"], "bodyMd": "full rewritten page in markdown", "changeList": [{ "section": "...", "before": "≤25 word summary", "after": "≤25 word summary", "why": "evidence-based reason" }], "metaTitle": "...", "metaDescription": "...", "evidenceUsed": ["..."] }
-
-Preserve what is working (sections with strong engagement/rankings per evidence). Do not change the page's fundamental topic or URL.`,
+Output rules — markdown prose ONLY, no JSON:
+1. Start with a brief diagnosis section (H2: "What we're fixing") — bullet points tied to evidence.
+2. Then the full rewritten page in H1/H2/H3 structure.
+3. Preserve what is working (sections with strong rankings/engagement per evidence).
+4. Do not change the page's fundamental topic.
+5. Target keyword in H1 and first paragraph.
+6. Write [NEEDS DATA: description] for unverifiable numbers.
+7. Plain markdown output only.`,
   },
   {
     key: "task_qa_label",
@@ -151,6 +196,38 @@ Flag every number, statistic, superlative claim ("#1", "best", "fastest") or cli
     key: "task_opportunity_label",
     notes: "One-sentence rationale for rule-detected opportunities.",
     body: `TASK: For each rule-detected opportunity above, write a one-sentence human-readable rationale a junior SEO would understand, referencing the actual numbers from the evidence. Return JSON: [{ "opportunityIndex": 0, "rationale": "..." }]. Use only provided numbers.`,
+  },
+  {
+    key: "task_section_rewrite",
+    notes: "Rewrites a selected passage inline. Vars: {{selectedText}}, {{instruction}}.",
+    body: `TASK: Rewrite the following text section according to the instruction.
+
+SELECTED TEXT:
+{{selectedText}}
+
+INSTRUCTION: {{instruction}}
+
+Return ONLY the rewritten text. No explanation, no surrounding quotes, no preamble. Preserve the markdown formatting structure (headings, bullet lists, bold) unless the instruction explicitly says to change it. Match the approximate length of the original unless the instruction says otherwise.`,
+  },
+  {
+    key: "task_draft_from_brief",
+    notes: "Writes a full draft from an approved brief. Vars: {{briefContent}}, {{workingTitle}}, {{targetKeyword}}.",
+    body: `TASK: Write the full article from the approved brief below.
+
+Working title: {{workingTitle}}
+Target keyword: {{targetKeyword}}
+
+APPROVED BRIEF:
+{{briefContent}}
+
+Output rules — markdown prose ONLY, no JSON:
+1. Follow the brief's outline exactly (H2/H3 structure as specified).
+2. Hit the word count target in the brief ±15%.
+3. Primary keyword in the first 100 words and naturally throughout.
+4. Write [NEEDS DATA: description] for any number you cannot verify from KNOWLEDGE or EVIDENCE.
+5. Include any must-include points and avoid all must-avoid items from the brief.
+6. End with a conclusion and a plain call-to-action.
+7. Do NOT include meta title, meta description, or JSON — pure markdown article only.`,
   },
   {
     key: "task_starter_knowledge",
