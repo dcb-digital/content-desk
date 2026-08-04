@@ -2,21 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { SettingsForm } from "./settings-form";
 
-const PROVIDER_MODELS: Record<string, string[]> = {
-  anthropic: [
-    "claude-sonnet-4-6",
-    "claude-opus-4-6",
-    "claude-haiku-4-5-20251001",
-  ],
-  openai: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"],
-  openrouter: [
-    "anthropic/claude-sonnet-4-6",
-    "anthropic/claude-opus-4-6",
-    "openai/gpt-4o",
-    "meta-llama/llama-3.1-70b-instruct",
-  ],
-};
-
 export default async function SettingsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -77,8 +62,7 @@ export default async function SettingsPage() {
         )}
 
         <SettingsForm
-          providerModels={PROVIDER_MODELS}
-          defaultProvider={(settings?.default_provider as string) ?? "anthropic"}
+          defaultProvider={(settings?.default_provider as string) ?? "openrouter"}
         />
       </section>
     </div>
