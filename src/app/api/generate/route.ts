@@ -83,7 +83,13 @@ export async function POST(request: Request) {
         workspace_id: workspaceId,
         client_id: clientId,
         document_id: documentId ?? null,
-        action: taskKey.replace("task_", "") as "draft",
+        action: (
+          taskKey.includes("plan") ? "plan" :
+          taskKey.includes("brief") ? "brief" :
+          taskKey.includes("refresh") ? "refresh" :
+          taskKey.includes("section") ? "section_rewrite" :
+          "draft"
+        ) as "draft",
         provider: provider as "anthropic" | "openai" | "openrouter",
         model: modelId,
         prompt_versions: assembled.promptVersions,

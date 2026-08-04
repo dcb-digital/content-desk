@@ -15,12 +15,17 @@ export async function saveGeneratedDocument({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
+  const { data: membership } = await supabase
+    .from("memberships").select("workspace_id").eq("user_id", user.id).single();
+  if (!membership) throw new Error("No workspace");
+
   const { data, error } = await supabase
     .from("documents")
     .insert({
+      workspace_id: membership.workspace_id,
       client_id: clientId,
       title: title || "Untitled draft",
-      kind: "blog_post",
+      kind: "draft",
       status: "in_review",
       body_md: bodyMd,
     })

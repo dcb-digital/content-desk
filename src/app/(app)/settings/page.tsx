@@ -26,20 +26,12 @@ export default async function SettingsPage() {
   );
 
   return (
-    <div className="max-w-2xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          LLM providers and workspace configuration.
-        </p>
-      </div>
-
+    <div className="space-y-6">
       <section className="space-y-4">
         <div>
           <h2 className="text-base font-semibold">LLM providers</h2>
           <p className="text-sm text-muted-foreground">
-            API keys are AES-GCM encrypted before storage and never sent to the
-            browser.
+            API keys are AES-GCM encrypted before storage and never sent to the browser.
           </p>
         </div>
 

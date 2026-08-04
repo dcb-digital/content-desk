@@ -7,7 +7,7 @@ import { TipTapEditor } from "@/components/editor/tiptap-editor";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { updateDocument } from "./actions";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Download } from "lucide-react";
 
 type Doc = {
   id: string;
@@ -72,6 +72,16 @@ export function DocumentEditor({ doc, clientId }: Props) {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  function handleDownload() {
+    const blob = new Blob([bodyMd], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${doc.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
@@ -86,6 +96,9 @@ export function DocumentEditor({ doc, clientId }: Props) {
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           <Badge variant={status.variant}>{status.label}</Badge>
+          <Button variant="ghost" size="sm" onClick={handleDownload} title="Download .md">
+            <Download className="size-3.5" />
+          </Button>
           <Button variant="ghost" size="sm" onClick={handleCopy} title="Copy markdown">
             {copied ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
           </Button>
