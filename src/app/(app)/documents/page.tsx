@@ -1,20 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { FileText } from "lucide-react";
-
-const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-  planned: { label: "Planned", variant: "outline" },
-  briefed: { label: "Brief", variant: "secondary" },
-  brief_approved: { label: "Brief approved", variant: "secondary" },
-  drafting: { label: "Drafting", variant: "secondary" },
-  in_review: { label: "In review", variant: "default" },
-  qa_flagged: { label: "QA flagged", variant: "secondary" },
-  approved: { label: "Approved", variant: "default" },
-  exported: { label: "Exported", variant: "outline" },
-  killed: { label: "Killed", variant: "outline" },
-};
 
 const FILTER_TABS = [
   { key: "active", label: "Active" },
@@ -83,7 +71,6 @@ export default async function AllDocumentsPage({ searchParams }: Props) {
       ) : (
         <div className="divide-y divide-border rounded-lg border border-border">
           {allDocs.map((doc) => {
-            const status = STATUS_LABELS[doc.status] ?? { label: doc.status, variant: "outline" as const };
             const client = Array.isArray(doc.clients) ? doc.clients[0] : doc.clients as { name: string } | null;
             return (
               <Link
@@ -102,7 +89,7 @@ export default async function AllDocumentsPage({ searchParams }: Props) {
                     })}
                   </p>
                 </div>
-                <Badge variant={status.variant}>{status.label}</Badge>
+                <StatusBadge status={doc.status} />
               </Link>
             );
           })}

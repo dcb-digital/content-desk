@@ -82,7 +82,9 @@
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
+    /* 8px, down from shadcn's 10px — tighter corners read as more precise on
+       dense panels and hairline borders. The whole radius scale derives from this. */
+    --radius: 0.5rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
@@ -127,9 +129,64 @@
     --sidebar-ring: oklch(0.556 0 0);
 }
 
+/*
+ * Semantic status palette.
+ *
+ * The rest of the app is deliberately monochrome — colour carries meaning here and
+ * nowhere else, which is what stops a dense tool turning into a fruit salad. One
+ * accent (brand) plus three states. Tune these five pairs and every badge, dot and
+ * pill in the app moves with them.
+ *
+ *   brand   — needs a human right now (a doc in review)
+ *   info    — in flight, no action required
+ *   warning — blocked or flagged
+ *   success — done and good
+ *   neutral — inert (planned, exported, archived) → falls back to muted tokens
+ */
+:root {
+    --brand: oklch(0.55 0.22 255);
+    --brand-foreground: oklch(0.99 0 0);
+    --brand-subtle: oklch(0.55 0.22 255 / 10%);
+    --info: oklch(0.55 0.14 245);
+    --info-subtle: oklch(0.55 0.14 245 / 10%);
+    --warning: oklch(0.62 0.15 65);
+    --warning-subtle: oklch(0.62 0.15 65 / 12%);
+    --success: oklch(0.52 0.14 155);
+    --success-subtle: oklch(0.52 0.14 155 / 12%);
+}
+
+.dark {
+    /* Lifted and slightly desaturated — full-chroma colour vibrates on near-black */
+    --brand: oklch(0.68 0.18 255);
+    --brand-foreground: oklch(0.15 0 0);
+    --brand-subtle: oklch(0.68 0.18 255 / 15%);
+    --info: oklch(0.70 0.12 245);
+    --info-subtle: oklch(0.70 0.12 245 / 15%);
+    --warning: oklch(0.78 0.13 70);
+    --warning-subtle: oklch(0.78 0.13 70 / 15%);
+    --success: oklch(0.72 0.14 158);
+    --success-subtle: oklch(0.72 0.14 158 / 15%);
+}
+
+@theme inline {
+    --color-brand: var(--brand);
+    --color-brand-foreground: var(--brand-foreground);
+    --color-brand-subtle: var(--brand-subtle);
+    --color-info: var(--info);
+    --color-info-subtle: var(--info-subtle);
+    --color-warning: var(--warning);
+    --color-warning-subtle: var(--warning-subtle);
+    --color-success: var(--success);
+    --color-success-subtle: var(--success-subtle);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    }
+  /* Metrics must not jitter between rows in a data-dense tool */
+  table {
+    font-variant-numeric: tabular-nums;
     }
   body {
     @apply bg-background text-foreground;

@@ -6,7 +6,7 @@ import { marked } from "marked";
 import TurndownService from "turndown";
 import { TipTapEditor, type TipTapEditorHandle } from "@/components/editor/tiptap-editor";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Dialog,
   DialogContent,
@@ -48,18 +48,6 @@ type Doc = {
   updated_at: string;
 };
 
-const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-  planned: { label: "Planned", variant: "outline" },
-  briefed: { label: "Briefed", variant: "secondary" },
-  brief_approved: { label: "Brief approved", variant: "secondary" },
-  drafting: { label: "Drafting", variant: "secondary" },
-  in_review: { label: "In review", variant: "default" },
-  qa_flagged: { label: "QA flagged", variant: "secondary" },
-  approved: { label: "Approved", variant: "default" },
-  exported: { label: "Exported", variant: "outline" },
-  killed: { label: "Killed", variant: "outline" },
-};
-
 function toHtml(md: string | null): string {
   if (!md) return "";
   return marked.parse(md, { async: false }) as string;
@@ -97,7 +85,6 @@ export function DocumentEditor({ doc, clientId }: Props) {
   const [versions, setVersions] = useState<DocVersion[]>([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
 
-  const status = STATUS_LABELS[currentStatus] ?? { label: currentStatus, variant: "outline" as const };
   const isBrief = doc.kind === "brief";
   const editable = currentStatus !== "exported" && currentStatus !== "killed";
 
@@ -232,7 +219,7 @@ export function DocumentEditor({ doc, clientId }: Props) {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">{doc.title}</h2>
-            <Badge variant={status.variant}>{status.label}</Badge>
+            <StatusBadge status={currentStatus} />
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {doc.kind} ·{" "}
