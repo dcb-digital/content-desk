@@ -115,6 +115,36 @@ Output rules — markdown prose ONLY, no JSON:
 7. Plain markdown — no JSON, no meta tags in the output.`,
   },
   {
+    key: "task_page_package",
+    notes:
+      "Structured page package (service/location/money page). Output is Zod-validated JSON — " +
+      "the shape is enforced by the schema, so this prompt governs content quality only.",
+    body: `TASK: Produce a complete page package for a service or location page.
+
+Working title: {{workingTitle}}
+Target keyword: {{targetKeyword}}
+Client: {{clientName}}
+
+This is a copy package handed to a developer or client to publish — not an article. Write every field as finished, publishable copy.
+
+Requirements:
+1. seoTitle — 50-60 characters, primary keyword first, no clickbait.
+2. metaDescription — 140-155 characters, states the offer plus a reason to act.
+3. h1 — written for a human, not a duplicate of the SEO title. Include the keyword naturally.
+4. suggestedUrl — root-relative, lowercase kebab-case, shallow (e.g. /services/family-law-sydney). No dates, no stop words.
+5. hero — headline, subheadline and 1-2 short paragraphs. Target keyword appears in the first sentence naturally.
+6. services — every item must be a service the KNOWLEDGE docs actually evidence. Do not pad the list with plausible-sounding extras.
+7. process — the real steps a client goes through, in order. If the knowledge docs don't describe a process, give the standard enquiry-to-delivery sequence and add a note to dataGaps.
+8. trustProof — points come ONLY from proof_case_studies knowledge. If there are none, return an empty points array and say so in dataGaps. Never write "trusted by hundreds of clients" or any unevidenced volume claim.
+9. faq — at least 4 questions real buyers ask at this stage of intent. Answer each in 40-80 words. No question that the page body already answers verbatim.
+10. cta — one clear next step with a button label of 2-4 words.
+11. internalLinks — only URLs that literally appear in the EVIDENCE or KNOWLEDGE sections above. Empty array if none do. Never invent a URL.
+12. localBusiness — fill only from knowledge docs. If the client's name/address/phone are not there, return null. Guessing NAP details is worse than omitting them.
+13. dataGaps — list everything you needed and could not verify. This list is shown to the operator, so be specific ("no pricing in knowledge docs", not "some data missing").
+
+Absolute rules: no statistic, price, year, award or ranking that is not in KNOWLEDGE or EVIDENCE. AU English throughout.`,
+  },
+  {
     key: "task_refresh",
     notes: "Refresh/rewrite of an existing URL in markdown prose.",
     body: `TASK: Refresh and rewrite the existing page in markdown.

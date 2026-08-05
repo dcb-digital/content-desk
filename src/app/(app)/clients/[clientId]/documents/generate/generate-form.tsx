@@ -10,6 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TipTapEditor } from "@/components/editor/tiptap-editor";
 import TurndownService from "turndown";
+import { PagePackageView } from "@/components/page-package-view";
+import {
+  packageToMarkdown,
+  type JsonLdContext,
+  type PagePackage,
+} from "@/lib/ai/page-package";
 import { saveGeneratedDocument } from "./actions";
 
 const turndown = new TurndownService({ headingStyle: "atx", bulletListMarker: "-" });
@@ -29,11 +35,17 @@ type Props = {
 
 const TASK_KEYS: Record<string, string> = {
   post: "task_draft_post",
-  page: "task_draft_page",
+  page_prose: "task_draft_page",
   refresh: "task_refresh",
   brief: "task_brief",
   draft_from_brief: "task_draft_from_brief",
 };
+
+/**
+ * Pages generate as a structured package, not a stream (brief §6.6): the whole
+ * thing has to validate before it's worth showing, so there's nothing to stream.
+ */
+const PACKAGE_TYPE = "page";
 
 export function GenerateForm({
   clientId,
@@ -54,9 +66,16 @@ export function GenerateForm({
     isBriefMode ? "draft_from_brief" : (initialType ?? "post")
   );
   const [editorHtml, setEditorHtml] = useState<string>("");
-  const [phase, setPhase] = useState<"form" | "streaming" | "editing">("form");
+  const [phase, setPhase] = useState<"form" | "streaming" | "editing" | "package">("form");
   const [saving, setSaving] = useState(false);
   const bodyMdRef = useRef("");
+
+  // Page package flow
+  const [pkg, setPkg] = useState<PagePackage | null>(null);
+  const [jsonLdCtx, setJsonLdCtx] = useState<JsonLdContext | null>(null);
+  const [buildingPackage, setBuildingPackage] = useState(false);
+
+  const isPackage = contentType === PACKAGE_TYPE;
 
   const { complete, completion, isLoading } = useCompletion({
     api: "/api/generate",
@@ -84,9 +103,46 @@ export function GenerateForm({
     },
   });
 
+  async function handleGeneratePackage() {
+    setBuildingPackage(true);
+    try {
+      const res = await fetch("/api/page-package", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId,
+          workingTitle: workingTitle.trim(),
+          targetKeyword: targetKeyword.trim(),
+        }),
+      });
+      const payload = await res.json() as {
+        error?: string;
+        package?: PagePackage;
+        jsonLdContext?: JsonLdContext;
+      };
+      if (!res.ok || !payload.package || !payload.jsonLdContext) {
+        toast.error(payload.error ?? "Page package generation failed.");
+        return;
+      }
+      setPkg(payload.package);
+      setJsonLdCtx(payload.jsonLdContext);
+      bodyMdRef.current = packageToMarkdown(payload.package);
+      setPhase("package");
+    } catch {
+      toast.error("Page package generation failed. Check your connection and try again.");
+    } finally {
+      setBuildingPackage(false);
+    }
+  }
+
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
     if (!workingTitle.trim()) return;
+
+    if (isPackage) {
+      await handleGeneratePackage();
+      return;
+    }
 
     const taskKey = TASK_KEYS[contentType] ?? "task_draft_post";
     const taskVars: Record<string, string> = {
@@ -118,6 +174,7 @@ export function GenerateForm({
         bodyMd: bodyMdRef.current,
         planItemId,
         kind: isBrief ? "brief" : "draft",
+        packageJson: pkg ? (pkg as unknown as Record<string, unknown>) : undefined,
       });
       router.push(`/clients/${clientId}/documents/${docId}`);
     } catch {
@@ -135,7 +192,7 @@ export function GenerateForm({
             placeholder="e.g. Best Plumbers in Melbourne"
             value={workingTitle}
             onChange={(e) => setWorkingTitle(e.target.value)}
-            disabled={disabled || isLoading}
+            disabled={disabled || isLoading || buildingPackage}
             required
           />
         </div>
@@ -150,7 +207,7 @@ export function GenerateForm({
             placeholder="e.g. emergency plumber Melbourne"
             value={targetKeyword}
             onChange={(e) => setTargetKeyword(e.target.value)}
-            disabled={disabled || isLoading}
+            disabled={disabled || isLoading || buildingPackage}
           />
         </div>
 
@@ -161,11 +218,12 @@ export function GenerateForm({
               id="contentType"
               value={contentType}
               onChange={(e) => setContentType(e.target.value)}
-              disabled={disabled || isLoading}
+              disabled={disabled || isLoading || buildingPackage}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <option value="post" className="bg-background">Blog post (draft)</option>
-              <option value="page" className="bg-background">Service / location page (draft)</option>
+              <option value="page" className="bg-background">Service / location page — full package</option>
+              <option value="page_prose" className="bg-background">Service / location page — copy only</option>
               <option value="refresh" className="bg-background">Refresh existing page (draft)</option>
               <option value="brief" className="bg-background">Content brief</option>
             </select>
@@ -178,16 +236,59 @@ export function GenerateForm({
           </p>
         )}
 
+        {isPackage && (
+          <p className="text-sm text-muted-foreground rounded-lg border border-border bg-muted/30 px-4 py-3">
+            The full package is meta, H1, hero, services, process, proof, FAQ, CTA, suggested URL,
+            internal links and JSON-LD — validated as structured data, so it takes a minute and
+            arrives all at once rather than streaming.
+          </p>
+        )}
+
         {planItemId && !isBriefMode && (
           <p className="text-xs text-muted-foreground">
             Linked to plan item — document will be connected to this plan.
           </p>
         )}
 
-        <Button type="submit" disabled={disabled || !workingTitle.trim() || isLoading}>
-          {contentType === "brief" ? "Generate brief" : "Generate draft"}
+        <Button type="submit" disabled={disabled || !workingTitle.trim() || isLoading || buildingPackage}>
+          {buildingPackage
+            ? "Building package…"
+            : contentType === "brief"
+              ? "Generate brief"
+              : isPackage
+                ? "Generate page package"
+                : "Generate draft"}
         </Button>
       </form>
+    );
+  }
+
+  if (phase === "package" && pkg && jsonLdCtx) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">
+            Review and edit the package, then save.
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPhase("form")}>
+              Start over
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? "Saving…" : "Save package"}
+            </Button>
+          </div>
+        </div>
+
+        <PagePackageView
+          pkg={pkg}
+          ctx={jsonLdCtx}
+          onChange={(next) => {
+            setPkg(next);
+            bodyMdRef.current = packageToMarkdown(next);
+          }}
+        />
+      </div>
     );
   }
 

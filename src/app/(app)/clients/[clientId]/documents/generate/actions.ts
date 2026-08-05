@@ -8,12 +8,15 @@ export async function saveGeneratedDocument({
   bodyMd,
   planItemId,
   kind = "draft",
+  packageJson,
 }: {
   clientId: string;
   title: string;
   bodyMd: string;
   planItemId?: string;
   kind?: "brief" | "draft";
+  /** Page package (brief §6.7) — bodyMd stays the markdown rendering of it. */
+  packageJson?: Record<string, unknown>;
 }): Promise<string> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -33,6 +36,7 @@ export async function saveGeneratedDocument({
       kind,
       status: kind === "brief" ? "briefed" : "in_review",
       body_md: bodyMd,
+      package_json: packageJson ?? {},
     })
     .select("id")
     .single();
