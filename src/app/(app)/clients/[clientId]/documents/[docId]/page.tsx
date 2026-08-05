@@ -10,14 +10,24 @@ export default async function DocumentPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: doc } = await supabase
-    .from("documents")
-    .select("id, title, kind, status, body_md, qa_results, created_at, updated_at")
-    .eq("id", docId)
-    .eq("client_id", clientId)
-    .single();
+  const [{ data: doc }, { data: client }] = await Promise.all([
+    supabase
+      .from("documents")
+      .select("id, title, kind, status, body_md, package_json, qa_results, created_at, updated_at")
+      .eq("id", docId)
+      .eq("client_id", clientId)
+      .single(),
+    // Name and domain are what the JSON-LD builder needs; nothing else is fetched.
+    supabase.from("clients").select("name, domain").eq("id", clientId).single(),
+  ]);
 
   if (!doc) notFound();
 
-  return <DocumentEditor doc={doc} clientId={clientId} />;
+  return (
+    <DocumentEditor
+      doc={doc}
+      clientId={clientId}
+      jsonLdContext={{ clientName: client?.name ?? "", domain: client?.domain ?? null }}
+    />
+  );
 }

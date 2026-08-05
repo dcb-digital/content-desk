@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { runQA } from "@/lib/qa/rules";
+import { runQA, runPackageQA } from "@/lib/qa/rules";
 
 export async function updateDocument({
   docId,
@@ -19,7 +19,15 @@ export async function updateDocument({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  const qaResults = runQA(bodyMd, targetKeyword);
+  const { data: current } = await supabase
+    .from("documents")
+    .select("version, workspace_id, package_json")
+    .eq("id", docId)
+    .single();
+
+  // Page packages are judged on their structured fields too — the markdown rendering
+  // alone can't tell you the meta description is missing (brief §6.7).
+  const qaResults = [...runQA(bodyMd, targetKeyword), ...runPackageQA(current?.package_json)];
   const hasFlags = qaResults.some((r) => r.level === "flag");
 
   // If there are hard flags and trying to approve, block and move to qa_flagged instead
@@ -37,13 +45,6 @@ export async function updateDocument({
 
   if (error) throw new Error(error.message);
 
-  // Write a version snapshot (fetch current version number first)
-  const { data: current } = await supabase
-    .from("documents")
-    .select("version, workspace_id")
-    .eq("id", docId)
-    .single();
-
   if (current) {
     const newVersion = (current.version ?? 1) + 1;
     await supabase.from("document_versions").insert({
@@ -51,6 +52,7 @@ export async function updateDocument({
       document_id: docId,
       version: newVersion,
       body_md: bodyMd,
+      package_json: current.package_json ?? {},
       author: user.id,
     });
     await supabase

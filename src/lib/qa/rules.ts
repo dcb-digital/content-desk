@@ -3,6 +3,7 @@
  * Returns an array of flags/warnings.
  * Iron rule: never invent metrics — only flag what can be measured from the text.
  */
+import { parsePagePackage } from "@/lib/ai/page-package";
 
 export type QAResult = {
   rule: string;
@@ -79,6 +80,94 @@ export function runQA(bodyMd: string, targetKeyword?: string): QAResult[] {
         });
       }
     }
+  }
+
+  return results;
+}
+
+/**
+ * Extra checks for page packages (brief §6.7 + acceptance test #6). These are the
+ * fields a developer needs to publish the page, so a missing one is a hard flag —
+ * a package that can't ship isn't a package.
+ *
+ * `packageJson` is whatever came out of `documents.package_json`; anything that
+ * isn't a page package returns no results rather than throwing.
+ */
+export function runPackageQA(packageJson: unknown): QAResult[] {
+  const pkg = parsePagePackage(packageJson);
+  if (!pkg) return [];
+
+  const results: QAResult[] = [];
+
+  // Meta — Google truncates around these lengths, so over is a real problem, not a nit.
+  const titleLen = pkg.seoTitle.trim().length;
+  if (titleLen === 0) {
+    results.push({ rule: "pkg_no_seo_title", level: "flag", message: "Page package has no SEO title." });
+  } else if (titleLen > 60) {
+    results.push({
+      rule: "pkg_seo_title_long",
+      level: "warn",
+      message: `SEO title is ${titleLen} characters — will truncate in results above ~60.`,
+    });
+  }
+
+  const descLen = pkg.metaDescription.trim().length;
+  if (descLen === 0) {
+    results.push({ rule: "pkg_no_meta_description", level: "flag", message: "Page package has no meta description." });
+  } else if (descLen > 160) {
+    results.push({
+      rule: "pkg_meta_description_long",
+      level: "warn",
+      message: `Meta description is ${descLen} characters — will truncate above ~160.`,
+    });
+  }
+
+  if (!pkg.h1.trim()) {
+    results.push({ rule: "pkg_no_h1", level: "flag", message: "Page package has no H1." });
+  }
+
+  if (pkg.services.items.length === 0) {
+    results.push({
+      rule: "pkg_no_services",
+      level: "flag",
+      message: "No services/inclusions in the package — the page has nothing to sell.",
+    });
+  }
+  if (pkg.process.steps.length === 0) {
+    results.push({ rule: "pkg_no_process", level: "warn", message: "No process section — add the steps a client goes through." });
+  }
+  if (pkg.faq.length < 3) {
+    results.push({
+      rule: "pkg_faq_thin",
+      level: "flag",
+      message: `Only ${pkg.faq.length} FAQ question${pkg.faq.length === 1 ? "" : "s"} — 3 minimum for FAQ schema to be worth emitting.`,
+    });
+  }
+  if (!pkg.cta.heading.trim() || !pkg.cta.buttonLabel.trim()) {
+    results.push({ rule: "pkg_no_cta", level: "flag", message: "Page package has no call to action." });
+  }
+
+  // Grounding, not style: an empty proof section means we could not evidence one.
+  if (pkg.trustProof.points.length === 0) {
+    results.push({
+      rule: "pkg_no_proof",
+      level: "warn",
+      message: "No proof points — add a proof_case_studies knowledge doc so the trust section can be evidenced.",
+    });
+  }
+  if (pkg.internalLinks.length === 0) {
+    results.push({
+      rule: "pkg_no_internal_links",
+      level: "warn",
+      message: "No internal links suggested — no URLs for this client appeared in the evidence.",
+    });
+  }
+  if (pkg.dataGaps.length > 0) {
+    results.push({
+      rule: "pkg_data_gaps",
+      level: "warn",
+      message: `${pkg.dataGaps.length} data gap${pkg.dataGaps.length === 1 ? "" : "s"} reported: ${pkg.dataGaps.join("; ")}`,
+    });
   }
 
   return results;

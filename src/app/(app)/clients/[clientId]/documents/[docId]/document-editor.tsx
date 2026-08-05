@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { marked } from "marked";
 import TurndownService from "turndown";
@@ -15,6 +15,9 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PagePackageView } from "@/components/page-package-view";
+import { parsePagePackage, type JsonLdContext } from "@/lib/ai/page-package";
 import { updateDocument, getDocumentVersions, restoreVersion } from "./actions";
 import {
   Copy, Check, Download, AlertTriangle, Info, Code2,
@@ -43,6 +46,8 @@ type Doc = {
   kind: string;
   status: string;
   body_md: string | null;
+  /** Page package for `page` documents (brief §6.7); `{}` for everything else. */
+  package_json: unknown;
   qa_results: QAResult[] | null;
   created_at: string;
   updated_at: string;
@@ -53,11 +58,14 @@ function toHtml(md: string | null): string {
   return marked.parse(md, { async: false }) as string;
 }
 
-type Props = { doc: Doc; clientId: string };
+type Props = { doc: Doc; clientId: string; jsonLdContext: JsonLdContext };
 
-export function DocumentEditor({ doc, clientId }: Props) {
+export function DocumentEditor({ doc, clientId, jsonLdContext }: Props) {
   const router = useRouter();
   const editorRef = useRef<TipTapEditorHandle>(null);
+
+  // Null for briefs, posts and refreshes — only page packages parse.
+  const pkg = useMemo(() => parsePagePackage(doc.package_json), [doc.package_json]);
 
   const [bodyMd, setBodyMd] = useState(doc.body_md ?? "");
   const [editorHtml, setEditorHtml] = useState(() => toHtml(doc.body_md));
@@ -213,6 +221,24 @@ export function DocumentEditor({ doc, clientId }: Props) {
     setShowHistory(false);
   }
 
+  const editor = (
+    <TipTapEditor
+      ref={editorRef}
+      content={editorHtml}
+      editable={editable}
+      onChange={(html) => {
+        htmlRef.current = html;
+        const md = turndown.turndown(html);
+        setBodyMd(md);
+        setSaved(false);
+      }}
+      onChangeText={(text) => {
+        setWordCount(text.trim().split(/\s+/).filter(Boolean).length);
+      }}
+      onSelectionUpdate={setHasSelection}
+    />
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -220,6 +246,11 @@ export function DocumentEditor({ doc, clientId }: Props) {
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">{doc.title}</h2>
             <StatusBadge status={currentStatus} />
+            {pkg && (
+              <span className="inline-flex h-5 items-center rounded-md border border-info/25 bg-info-subtle px-1.5 text-xs font-medium text-info">
+                Page package
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {doc.kind} ·{" "}
@@ -334,21 +365,23 @@ export function DocumentEditor({ doc, clientId }: Props) {
 
       <div className="flex gap-4">
         <div className="flex-1 min-w-0">
-          <TipTapEditor
-            ref={editorRef}
-            content={editorHtml}
-            editable={editable}
-            onChange={(html) => {
-              htmlRef.current = html;
-              const md = turndown.turndown(html);
-              setBodyMd(md);
-              setSaved(false);
-            }}
-            onChangeText={(text) => {
-              setWordCount(text.trim().split(/\s+/).filter(Boolean).length);
-            }}
-            onSelectionUpdate={setHasSelection}
-          />
+          {pkg ? (
+            <Tabs defaultValue="copy" className="gap-3">
+              <TabsList>
+                <TabsTrigger value="copy">Copy</TabsTrigger>
+                <TabsTrigger value="package">Package</TabsTrigger>
+              </TabsList>
+              {/* keepMounted: unmounting TipTap on tab switch would throw away unsaved edits. */}
+              <TabsContent value="copy" keepMounted>
+                {editor}
+              </TabsContent>
+              <TabsContent value="package">
+                <PagePackageView pkg={pkg} ctx={jsonLdContext} />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            editor
+          )}
         </div>
 
         {/* Version history panel */}
