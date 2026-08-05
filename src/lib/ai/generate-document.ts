@@ -13,11 +13,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getModel } from "@/lib/ai/provider";
 import { assemblePrompt } from "@/lib/ai/assemble";
 import { PagePackageSchema, packageToMarkdown } from "@/lib/ai/page-package";
+import { estimateCost } from "@/lib/ai/pricing";
 import { runQA, runPackageQA } from "@/lib/qa/rules";
-
-/** Anthropic Sonnet rates — the default provider. Estimate only; usage log holds the tokens. */
-const INPUT_USD_PER_MTOK = 3;
-const OUTPUT_USD_PER_MTOK = 15;
 
 export type PlanItemType = "post" | "page" | "refresh";
 export type GenerationTarget = "brief" | "draft";
@@ -119,6 +116,10 @@ export async function generateForPlanItem({
     settings.default_provider as string,
   );
 
+  // Page packages are their own action so the usage screen can tell them apart
+  // from ordinary drafts — they cost noticeably more per generation.
+  const logAction = action === "brief" ? "brief" : isPagePackage ? "page_package" : "draft";
+
   const startedAt = Date.now();
   let bodyMd: string;
   let packageJson: Record<string, unknown> | null = null;
@@ -152,7 +153,7 @@ export async function generateForPlanItem({
     await supabase.from("generation_logs").insert({
       workspace_id: workspaceId,
       client_id: clientId,
-      action: action === "brief" ? "brief" : "draft",
+      action: logAction,
       provider: provider as "anthropic",
       model: modelId,
       prompt_versions: assembled.promptVersions,
@@ -211,14 +212,13 @@ export async function generateForPlanItem({
     workspace_id: workspaceId,
     client_id: clientId,
     document_id: doc.id,
-    action: action === "brief" ? "brief" : "draft",
+    action: logAction,
     provider: provider as "anthropic" | "openai" | "openrouter",
     model: modelId,
     prompt_versions: assembled.promptVersions,
     input_tokens: inputTokens,
     output_tokens: outputTokens,
-    est_cost_usd:
-      (inputTokens / 1_000_000) * INPUT_USD_PER_MTOK + (outputTokens / 1_000_000) * OUTPUT_USD_PER_MTOK,
+    est_cost_usd: estimateCost(modelId, inputTokens, outputTokens).usd,
     duration_ms: Date.now() - startedAt,
     success: true,
     user_id: userId,

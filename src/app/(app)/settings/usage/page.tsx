@@ -19,8 +19,13 @@ export default async function UsagePage() {
 
   const allLogs = logs ?? [];
 
-  // Aggregate totals
-  const totalCost = allLogs.reduce((s, l) => s + (l.est_cost_usd ?? 0), 0);
+  // A null cost means we have no published rate for that model — counting it as
+  // zero would quietly understate the total, which is the bug this screen had.
+  const pricedLogs = allLogs.filter((l) => l.est_cost_usd !== null);
+  const unpricedLogs = allLogs.filter((l) => l.est_cost_usd === null && l.success);
+  const unpricedModels = [...new Set(unpricedLogs.map((l) => l.model))];
+
+  const totalCost = pricedLogs.reduce((s, l) => s + (l.est_cost_usd ?? 0), 0);
   const totalTokensIn = allLogs.reduce((s, l) => s + (l.input_tokens ?? 0), 0);
   const totalTokensOut = allLogs.reduce((s, l) => s + (l.output_tokens ?? 0), 0);
 
@@ -29,9 +34,23 @@ export default async function UsagePage() {
       <div>
         <h2 className="text-base font-semibold">Usage & costs</h2>
         <p className="text-sm text-muted-foreground">
-          Last 100 generations. Costs are estimates based on provider list prices.
+          Last 100 generations. Costs are estimated from Anthropic list prices at the
+          time of the run. Going through OpenRouter adds its own margin on top.
         </p>
       </div>
+
+      {unpricedModels.length > 0 && (
+        <div className="rounded-lg border border-warning/30 bg-warning-subtle px-4 py-3 text-xs text-warning">
+          <p className="font-medium">
+            {unpricedLogs.length} generation{unpricedLogs.length === 1 ? "" : "s"} not included in the total
+          </p>
+          <p className="mt-1">
+            No published rate on file for {unpricedModels.map((m) => `"${m}"`).join(", ")}. Token
+            counts below are still accurate — add the rate in{" "}
+            <code className="font-mono">src/lib/ai/pricing.ts</code> to price them.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg border border-border bg-card p-4">
@@ -102,7 +121,13 @@ export default async function UsagePage() {
                       {log.output_tokens?.toLocaleString()}
                     </td>
                     <td className="px-4 py-2 text-xs text-right font-mono">
-                      ${(log.est_cost_usd ?? 0).toFixed(4)}
+                      {log.est_cost_usd === null ? (
+                        <span className="text-muted-foreground" title="No published rate for this model">
+                          not priced
+                        </span>
+                      ) : (
+                        `$${log.est_cost_usd.toFixed(4)}`
+                      )}
                     </td>
                   </tr>
                 );

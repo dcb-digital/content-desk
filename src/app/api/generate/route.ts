@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getModel } from "@/lib/ai/provider";
 import { assemblePrompt } from "@/lib/ai/assemble";
+import { estimateCost } from "@/lib/ai/pricing";
 import { z } from "zod";
 
 const RequestSchema = z.object({
@@ -88,10 +89,6 @@ export async function POST(request: Request) {
     messages: [{ role: "user", content: assembled.userContent }],
     onFinish: async ({ usage, text }) => {
       const durationMs = Date.now() - startedAt;
-      // Rough cost estimate (Sonnet 4.6 pricing as default)
-      const inputCost = (usage.promptTokens / 1_000_000) * 3;
-      const outputCost = (usage.completionTokens / 1_000_000) * 15;
-      const estCostUsd = inputCost + outputCost;
 
       // Log the generation
       await supabase.from("generation_logs").insert({
@@ -110,7 +107,7 @@ export async function POST(request: Request) {
         prompt_versions: assembled.promptVersions,
         input_tokens: usage.promptTokens,
         output_tokens: usage.completionTokens,
-        est_cost_usd: estCostUsd,
+        est_cost_usd: estimateCost(modelId, usage.promptTokens, usage.completionTokens).usd,
         duration_ms: durationMs,
         success: true,
         user_id: user.id,

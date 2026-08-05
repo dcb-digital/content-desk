@@ -117,6 +117,7 @@ export const generationAction = pgEnum("generation_action", [
   "qa_label",
   "opportunity_label",
   "starter_knowledge",
+  "page_package",
 ]);
 
 /* --------------------------- Tenancy ------------------------------ */
@@ -644,7 +645,8 @@ export const generationLogs = pgTable(
     promptVersions: jsonb("prompt_versions").$type<Record<string, number>>().default({}),
     inputTokens: integer("input_tokens").notNull().default(0),
     outputTokens: integer("output_tokens").notNull().default(0),
-    estCostUsd: real("est_cost_usd").notNull().default(0),
+    /** Null = no published rate for this model. Distinct from 0, which means free. */
+    estCostUsd: real("est_cost_usd"),
     durationMs: integer("duration_ms"),
     success: boolean("success").notNull().default(true),
     error: text("error"),

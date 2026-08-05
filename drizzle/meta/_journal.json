@@ -15,6 +15,13 @@
       "when": 1785896435073,
       "tag": "0001_busy_the_watchers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785897591551,
+      "tag": "0002_flaky_freak",
+      "breakpoints": true
     }
   ]
 }
