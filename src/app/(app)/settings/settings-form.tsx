@@ -9,73 +9,85 @@ import { toast } from "sonner";
 
 // Anthropic and OpenAI: curated dropdown (stable IDs)
 // OpenRouter: free text + datalist suggestions (they add models constantly)
+//
+// Every ID here is verified against the provider's own model list — a picker
+// that offers a retired ID just produces a 404 at generation time. Rates for
+// all of them live in src/lib/ai/pricing.ts. Checked 2026-08-05.
 const ANTHROPIC_MODELS = [
-  { id: "claude-opus-4-6", label: "Claude Opus 4.6 — most capable" },
-  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6 — best balance ✓ recommended" },
-  { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 — fast & cheap (plans/QA)" },
-  { id: "claude-opus-4-5", label: "Claude Opus 4.5" },
-  { id: "claude-sonnet-4-5", label: "Claude Sonnet 4.5" },
+  { id: "claude-opus-5", label: "Claude Opus 5 — most capable ✓ recommended" },
+  { id: "claude-sonnet-5", label: "Claude Sonnet 5 — best balance" },
+  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5 — fast & cheap (plans/QA)" },
+  { id: "claude-opus-4-8", label: "Claude Opus 4.8" },
+  { id: "claude-opus-4-6", label: "Claude Opus 4.6" },
+  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
 ];
 
 const OPENAI_MODELS = [
+  { id: "gpt-5.6-sol", label: "GPT-5.6 Sol — most capable" },
+  { id: "gpt-5.6-terra", label: "GPT-5.6 Terra — balanced" },
+  { id: "gpt-5.6-luna", label: "GPT-5.6 Luna — fast & cheap" },
+  { id: "gpt-5.4", label: "GPT-5.4" },
+  { id: "gpt-5.4-mini", label: "GPT-5.4 mini" },
+  { id: "gpt-4.1", label: "GPT-4.1" },
   { id: "gpt-4o", label: "GPT-4o" },
-  { id: "gpt-4o-mini", label: "GPT-4o mini — fast & cheap" },
-  { id: "o3", label: "o3 — reasoning" },
-  { id: "o3-mini", label: "o3-mini — reasoning, cheaper" },
-  { id: "o4-mini", label: "o4-mini" },
-  { id: "gpt-4-turbo", label: "GPT-4 Turbo" },
+  { id: "gpt-4o-mini", label: "GPT-4o mini" },
 ];
 
-// Suggestions only — user can type any valid OpenRouter model ID
+// Suggestions only — the operator can type any valid OpenRouter model ID, and
+// cost for whatever they type is priced from OpenRouter's live model list.
+// Every ID below was checked against that list on 2026-08-05; 14 of the
+// previous 36 had been retired and would have 404'd on first use.
+// Note OpenRouter spells Anthropic IDs with dots, not dashes.
 const OPENROUTER_SUGGESTIONS = [
   // Anthropic
-  "anthropic/claude-opus-4-6",
-  "anthropic/claude-sonnet-4-6",
-  "anthropic/claude-haiku-4-5",
+  "anthropic/claude-opus-5",
+  "anthropic/claude-sonnet-5",
+  "anthropic/claude-opus-4.6",
+  "anthropic/claude-sonnet-4.6",
+  "anthropic/claude-haiku-4.5",
   // OpenAI
+  "openai/gpt-4.1",
   "openai/gpt-4o",
   "openai/gpt-4o-mini",
   "openai/o3",
   "openai/o3-mini",
   "openai/o4-mini",
   // Google
+  "google/gemini-3-flash-preview",
   "google/gemini-2.5-pro",
   "google/gemini-2.5-flash",
   "google/gemini-2.5-flash-lite",
-  "google/gemini-2.0-flash-001",
   // DeepSeek
+  "deepseek/deepseek-v3.2",
   "deepseek/deepseek-r1",
   "deepseek/deepseek-r1-0528",
-  "deepseek/deepseek-chat-v3-5",
-  "deepseek/deepseek-v3-base:free",
+  "deepseek/deepseek-chat-v3.1",
   // Meta
   "meta-llama/llama-3.3-70b-instruct",
-  "meta-llama/llama-3.1-405b-instruct",
   "meta-llama/llama-4-maverick",
   "meta-llama/llama-4-scout",
   // Mistral
-  "mistralai/mistral-large-2411",
+  "mistralai/mistral-large-2512",
+  "mistralai/mistral-medium-3",
   "mistralai/mistral-small-3.1-24b-instruct",
-  "mistralai/codestral-2501",
+  "mistralai/codestral-2508",
   // xAI
-  "x-ai/grok-3-beta",
-  "x-ai/grok-3-mini-beta",
+  "x-ai/grok-4.5",
+  "x-ai/grok-4.3",
   // Qwen
-  "qwen/qwen-2.5-72b-instruct",
   "qwen/qwen3-235b-a22b",
   "qwen/qwen3-30b-a3b",
-  // Fable
-  "fable/fable-standard",
+  "qwen/qwen3-32b",
+  // Moonshot
+  "moonshotai/kimi-k2.6",
   // Cohere
   "cohere/command-r-plus-08-2024",
   "cohere/command-r7b-12-2024",
   // Perplexity
   "perplexity/sonar-pro",
   "perplexity/sonar",
-  // NovaSky / other
-  "neversleep/llama-3.1-lumimaid-70b",
+  // Microsoft
   "microsoft/phi-4",
-  "microsoft/phi-4-mini-instruct",
 ];
 
 type Props = {

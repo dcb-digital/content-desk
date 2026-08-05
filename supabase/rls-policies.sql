@@ -111,7 +111,8 @@ begin
     'document_versions',
     'edit_diffs',
     'generation_logs',
-    'status_events'
+    'status_events',
+    'batch_runs'
   ]
   loop
     execute format('alter table public.%I enable row level security;', t);

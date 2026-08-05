@@ -101,6 +101,13 @@ export const documentStatus = pgEnum("document_status", [
 
 export const documentKind = pgEnum("document_kind", ["brief", "draft"]);
 
+export const batchRunStatus = pgEnum("batch_run_status", [
+  "queued",
+  "running",
+  "completed",
+  "failed",
+]);
+
 export const generationAction = pgEnum("generation_action", [
   "plan",
   "brief",
@@ -110,6 +117,7 @@ export const generationAction = pgEnum("generation_action", [
   "qa_label",
   "opportunity_label",
   "starter_knowledge",
+  "page_package",
 ]);
 
 /* --------------------------- Tenancy ------------------------------ */
@@ -554,6 +562,53 @@ export const editDiffs = pgTable(
   (t) => [index("edit_diffs_client_idx").on(t.clientId)],
 );
 
+/* --------------------------- Batch runs ---------------------------- */
+
+/**
+ * One row per "draft all items" run (brief §6.6). Inngest owns execution and
+ * retries; this row owns what the operator sees, because the queue can't tell
+ * them which of tonight's four articles failed and why.
+ *
+ * Per-item results live in `items` rather than a child table: a run is always
+ * read and written whole, and the batch is sequential, so there is no
+ * concurrent-write case to lose.
+ */
+export type BatchRunItem = {
+  planItemId: string;
+  workingTitle: string;
+  /** plan_items.type at queue time */
+  type: "post" | "page" | "refresh";
+  /** what this item produces — respects the client's brief gate */
+  action: "brief" | "draft";
+  status: "pending" | "running" | "done" | "failed";
+  documentId?: string;
+  error?: string;
+};
+
+export const batchRuns = pgTable(
+  "batch_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    clientId: uuid("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+    planId: uuid("plan_id").notNull().references(() => contentPlans.id, { onDelete: "cascade" }),
+    status: batchRunStatus("status").notNull().default("queued"),
+    total: integer("total").notNull().default(0),
+    succeeded: integer("succeeded").notNull().default(0),
+    failed: integer("failed").notNull().default(0),
+    items: jsonb("items").$type<BatchRunItem[]>().notNull().default([]),
+    /** set only when the run itself couldn't proceed — per-item failures live in `items` */
+    error: text("error"),
+    startedBy: uuid("started_by").references(() => users.id),
+    startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("batch_runs_plan_idx").on(t.planId),
+    index("batch_runs_client_started_idx").on(t.clientId, t.startedAt),
+  ],
+);
+
 /* ------------------------ Prompts & logging ------------------------ */
 
 /** Prompt library lives in DB (iron rule #4). Improving prompts never requires a deploy. */
@@ -590,7 +645,8 @@ export const generationLogs = pgTable(
     promptVersions: jsonb("prompt_versions").$type<Record<string, number>>().default({}),
     inputTokens: integer("input_tokens").notNull().default(0),
     outputTokens: integer("output_tokens").notNull().default(0),
-    estCostUsd: real("est_cost_usd").notNull().default(0),
+    /** Null = no published rate for this model. Distinct from 0, which means free. */
+    estCostUsd: real("est_cost_usd"),
     durationMs: integer("duration_ms"),
     success: boolean("success").notNull().default(true),
     error: text("error"),

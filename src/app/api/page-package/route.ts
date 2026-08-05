@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getModel } from "@/lib/ai/provider";
 import { assemblePrompt } from "@/lib/ai/assemble";
 import { PagePackageSchema } from "@/lib/ai/page-package";
+import { estimateCost } from "@/lib/ai/pricing";
 
 /** One non-streaming call that writes a whole page — well past the 15s default. */
 export const maxDuration = 120;
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
       workspace_id: workspaceId,
       client_id: clientId,
       document_id: documentId ?? null,
-      action: "draft",
+      action: "page_package",
       provider: (settings?.default_provider as "anthropic") ?? "anthropic",
       model,
       success: false,
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
   let assembled: Awaited<ReturnType<typeof assemblePrompt>>;
   let resolved: Awaited<ReturnType<typeof getModel>>;
   try {
-    assembled = await assemblePrompt(clientId, workspaceId, "task_page_package", {
+    assembled = await assemblePrompt(supabase, clientId, workspaceId, "task_page_package", {
       workingTitle,
       targetKeyword: targetKeyword || "(none specified)",
       clientName: client.name as string,
@@ -116,20 +117,17 @@ export async function POST(request: Request) {
         prompt: userContent,
       });
 
-      const inputCost = (usage.promptTokens / 1_000_000) * 3;
-      const outputCost = (usage.completionTokens / 1_000_000) * 15;
-
       await supabase.from("generation_logs").insert({
         workspace_id: workspaceId,
         client_id: clientId,
         document_id: documentId ?? null,
-        action: "draft",
+        action: "page_package",
         provider: provider as "anthropic" | "openai" | "openrouter",
         model: modelId,
         prompt_versions: assembled.promptVersions,
         input_tokens: usage.promptTokens,
         output_tokens: usage.completionTokens,
-        est_cost_usd: inputCost + outputCost,
+        est_cost_usd: (await estimateCost(provider, modelId, usage.promptTokens, usage.completionTokens)).usd,
         duration_ms: Date.now() - startedAt,
         success: true,
         user_id: user.id,

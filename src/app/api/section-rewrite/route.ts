@@ -2,6 +2,7 @@ import { generateText } from "ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getModel } from "@/lib/ai/provider";
+import { estimateCost } from "@/lib/ai/pricing";
 import { z } from "zod";
 
 const RequestSchema = z.object({
@@ -77,8 +78,6 @@ export async function POST(request: Request) {
   });
 
   const durationMs = Date.now() - startedAt;
-  const inputCost = (usage.promptTokens / 1_000_000) * 3;
-  const outputCost = (usage.completionTokens / 1_000_000) * 15;
 
   await supabase.from("generation_logs").insert({
     workspace_id: workspaceId,
@@ -89,7 +88,7 @@ export async function POST(request: Request) {
     prompt_versions: promptRow ? { task_section_rewrite: promptRow.version } : {},
     input_tokens: usage.promptTokens,
     output_tokens: usage.completionTokens,
-    est_cost_usd: inputCost + outputCost,
+    est_cost_usd: (await estimateCost(provider, modelId, usage.promptTokens, usage.completionTokens)).usd,
     duration_ms: durationMs,
     success: true,
     user_id: user.id,

@@ -7,7 +7,7 @@
  *
  * All prompts fetched from DB — improving quality never requires a deploy.
  */
-import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { excerptSnapshot } from "@/lib/evidence/excerpt";
 import type { NormalizedEvidence } from "@/db/schema";
 
@@ -20,14 +20,26 @@ export type AssembledPrompt = {
   promptVersions: Record<string, number>;
 };
 
+/**
+ * The caller supplies the Supabase client because assembly runs in two very
+ * different contexts: request handlers pass the RLS-scoped session client, and
+ * the Inngest worker — which has no session — passes the service-role client and
+ * scopes by workspace itself.
+ */
 export async function assemblePrompt(
+  supabase: SupabaseClient,
   clientId: string,
   workspaceId: string,
   taskKey: string,
   taskVars: Record<string, string>,
+  /**
+   * Assembly step 6 (brief §6.6) — the plan item or approved brief this
+   * generation works from. Task prompts that interpolate the brief themselves
+   * (task_draft_from_brief) don't need it; structured tasks like the page
+   * package have nowhere to put it, so it goes in as its own section.
+   */
+  planContext?: string,
 ): Promise<AssembledPrompt> {
-  const supabase = await createClient();
-
   // Fetch the active prompts we need in one query
   const promptKeys = ["system_rules", taskKey];
   const { data: prompts } = await supabase
@@ -52,10 +64,15 @@ export async function assemblePrompt(
   // 1. System rules
   const systemRules = getPrompt("system_rules");
 
+  // Every query below is explicitly workspace-scoped as well as client-scoped.
+  // Under the session client RLS would already do it; under the service-role
+  // client it would not, and this function must be safe in both.
+
   // 2. Objectives snapshot (current)
   const { data: objective } = await supabase
     .from("objectives")
     .select("summary_md, data")
+    .eq("workspace_id", workspaceId)
     .eq("client_id", clientId)
     .eq("is_current", true)
     .maybeSingle();
@@ -64,6 +81,7 @@ export async function assemblePrompt(
   const { data: pinnedDocs } = await supabase
     .from("knowledge_docs")
     .select("title, type, body_md")
+    .eq("workspace_id", workspaceId)
     .eq("client_id", clientId)
     .eq("pinned", true)
     .order("type");
@@ -72,6 +90,7 @@ export async function assemblePrompt(
   const { data: snapshots } = await supabase
     .from("evidence_snapshots")
     .select("id, provider, period_start, period_end, data")
+    .eq("workspace_id", workspaceId)
     .eq("client_id", clientId)
     .order("created_at", { ascending: false })
     .limit(MAX_SNAPSHOTS);
@@ -116,6 +135,11 @@ export async function assemblePrompt(
       "## EVIDENCE\n[No evidence snapshots for this client — upload exports in the Evidence tab. " +
         "State no metrics at all; say the data is unavailable.]",
     );
+  }
+
+  // 6. Plan item / approved brief
+  if (planContext?.trim()) {
+    sections.push(`## PLAN ITEM / APPROVED BRIEF\n${planContext.trim()}`);
   }
 
   // 7. Task instruction (interpolate vars)
