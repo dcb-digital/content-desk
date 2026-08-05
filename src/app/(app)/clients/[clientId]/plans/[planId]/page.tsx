@@ -6,6 +6,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AddItemForm } from "./add-item-form";
 import { DeleteItemButton } from "./delete-item-button";
+import { BatchPanel, type BatchRun } from "./batch-panel";
+import { getLatestBatchRun } from "./actions";
+import { nextActionForItem } from "@/lib/ai/generate-document";
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
   post: "Blog post",
@@ -30,19 +33,30 @@ export default async function PlanDetailPage({ params }: Props) {
 
   if (!plan) notFound();
 
-  const { data: items } = await supabase
-    .from("plan_items")
-    .select("id, type, scheduled_date, working_title, target_keyword, status")
-    .eq("plan_id", planId)
-    .order("scheduled_date", { ascending: true });
+  const [{ data: items }, { data: client }, latestRun] = await Promise.all([
+    supabase
+      .from("plan_items")
+      .select("id, type, scheduled_date, working_title, target_keyword, status")
+      .eq("plan_id", planId)
+      .order("scheduled_date", { ascending: true }),
+    supabase.from("clients").select("brief_gate_enabled").eq("id", clientId).single(),
+    getLatestBatchRun(planId),
+  ]);
 
   const allItems = items ?? [];
+  const briefGateEnabled = client?.brief_gate_enabled ?? true;
+  const eligibleCount = allItems.filter(
+    (item) => nextActionForItem(item.status, briefGateEnabled) !== null,
+  ).length;
 
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">{plan.name}</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">{plan.name}</h2>
+            <StatusBadge status={plan.status} />
+          </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {plan.horizon_days}d horizon · starts{" "}
             {new Date(plan.start_date).toLocaleDateString("en-AU", {
@@ -52,6 +66,14 @@ export default async function PlanDetailPage({ params }: Props) {
         </div>
         <AddItemForm planId={planId} clientId={clientId} />
       </div>
+
+      <BatchPanel
+        planId={planId}
+        clientId={clientId}
+        planStatus={plan.status}
+        eligibleCount={eligibleCount}
+        initialRun={(latestRun as BatchRun | null) ?? null}
+      />
 
       {allItems.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border py-14 text-center">

@@ -82,7 +82,7 @@ export async function POST(request: Request) {
   let assembled: Awaited<ReturnType<typeof assemblePrompt>>;
   let resolved: Awaited<ReturnType<typeof getModel>>;
   try {
-    assembled = await assemblePrompt(clientId, workspaceId, "task_page_package", {
+    assembled = await assemblePrompt(supabase, clientId, workspaceId, "task_page_package", {
       workingTitle,
       targetKeyword: targetKeyword || "(none specified)",
       clientName: client.name as string,

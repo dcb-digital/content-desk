@@ -33,6 +33,16 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/auth");
 
+  /**
+   * Inngest calls this endpoint as a machine, with no session cookie, so a
+   * redirect to /login would silently break every background job. It is not
+   * unprotected: the SDK verifies each request against INNGEST_SIGNING_KEY and
+   * refuses to serve in production without one.
+   */
+  if (pathname.startsWith("/api/inngest")) {
+    return supabaseResponse;
+  }
+
   if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

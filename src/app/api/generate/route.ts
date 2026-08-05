@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   let provider: string;
   let modelId: string;
   try {
-    assembled = await assemblePrompt(clientId, workspaceId, taskKey, taskVars);
+    assembled = await assemblePrompt(supabase, clientId, workspaceId, taskKey, taskVars);
     ({ model, provider, modelId } = await getModel(
       settings.providers as Record<string, { encKey: string; model: string }>,
       settings.default_provider as string,
