@@ -34,8 +34,10 @@ export default async function UsagePage() {
       <div>
         <h2 className="text-base font-semibold">Usage & costs</h2>
         <p className="text-sm text-muted-foreground">
-          Last 100 generations. Costs are estimated from Anthropic list prices at the
-          time of the run. Going through OpenRouter adds its own margin on top.
+          Last 100 generations. Costs are priced per model at the time of the run —
+          OpenRouter runs use its live published rates, Anthropic and OpenAI use their
+          list prices. Prompt caching and batch discounts are not reflected, so a real
+          invoice can come in lower.
         </p>
       </div>
 

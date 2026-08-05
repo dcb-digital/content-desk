@@ -218,7 +218,7 @@ export async function generateForPlanItem({
     prompt_versions: assembled.promptVersions,
     input_tokens: inputTokens,
     output_tokens: outputTokens,
-    est_cost_usd: estimateCost(modelId, inputTokens, outputTokens).usd,
+    est_cost_usd: (await estimateCost(provider, modelId, inputTokens, outputTokens)).usd,
     duration_ms: Date.now() - startedAt,
     success: true,
     user_id: userId,

@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     prompt_versions: promptRow ? { task_section_rewrite: promptRow.version } : {},
     input_tokens: usage.promptTokens,
     output_tokens: usage.completionTokens,
-    est_cost_usd: estimateCost(modelId, usage.promptTokens, usage.completionTokens).usd,
+    est_cost_usd: (await estimateCost(provider, modelId, usage.promptTokens, usage.completionTokens)).usd,
     duration_ms: durationMs,
     success: true,
     user_id: user.id,

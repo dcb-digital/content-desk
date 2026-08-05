@@ -127,7 +127,7 @@ export async function POST(request: Request) {
         prompt_versions: assembled.promptVersions,
         input_tokens: usage.promptTokens,
         output_tokens: usage.completionTokens,
-        est_cost_usd: estimateCost(modelId, usage.promptTokens, usage.completionTokens).usd,
+        est_cost_usd: (await estimateCost(provider, modelId, usage.promptTokens, usage.completionTokens)).usd,
         duration_ms: Date.now() - startedAt,
         success: true,
         user_id: user.id,
