@@ -268,7 +268,7 @@ export function GenerateForm({
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            Review the package, then save. You can edit the copy after saving.
+            Review and edit the package, then save.
           </p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setPhase("form")}>
@@ -280,7 +280,14 @@ export function GenerateForm({
           </div>
         </div>
 
-        <PagePackageView pkg={pkg} ctx={jsonLdCtx} />
+        <PagePackageView
+          pkg={pkg}
+          ctx={jsonLdCtx}
+          onChange={(next) => {
+            setPkg(next);
+            bodyMdRef.current = packageToMarkdown(next);
+          }}
+        />
       </div>
     );
   }

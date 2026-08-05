@@ -17,7 +17,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PagePackageView } from "@/components/page-package-view";
-import { parsePagePackage, type JsonLdContext } from "@/lib/ai/page-package";
+import {
+  packageToMarkdown,
+  parsePagePackage,
+  type JsonLdContext,
+  type PagePackage,
+} from "@/lib/ai/page-package";
 import { updateDocument, getDocumentVersions, restoreVersion } from "./actions";
 import {
   Copy, Check, Download, AlertTriangle, Info, Code2,
@@ -38,6 +43,7 @@ type DocVersion = {
   author: string;
   created_at: string;
   body_md: string;
+  package_json: unknown;
 };
 
 type Doc = {
@@ -64,15 +70,29 @@ export function DocumentEditor({ doc, clientId, jsonLdContext }: Props) {
   const router = useRouter();
   const editorRef = useRef<TipTapEditorHandle>(null);
 
-  // Null for briefs, posts and refreshes — only page packages parse.
-  const pkg = useMemo(() => parsePagePackage(doc.package_json), [doc.package_json]);
+  /**
+   * Null for briefs, posts and refreshes — only page packages parse. When it is a
+   * package, the package is the document's source of truth and the markdown body
+   * is derived from it; the prose editor becomes a read-only preview. One editable
+   * representation, so the HTML and JSON-LD exports can't drift from the copy.
+   */
+  const [pkg, setPkg] = useState<PagePackage | null>(() => parsePagePackage(doc.package_json));
 
   const [bodyMd, setBodyMd] = useState(doc.body_md ?? "");
   const [editorHtml, setEditorHtml] = useState(() => toHtml(doc.body_md));
   const htmlRef = useRef<string>(toHtml(doc.body_md));
-  const [wordCount, setWordCount] = useState(() =>
+
+  const derivedMd = useMemo(() => (pkg ? packageToMarkdown(pkg) : null), [pkg]);
+  /** What every export, save and word count reads — derived for packages, edited for prose. */
+  const effectiveBodyMd = derivedMd ?? bodyMd;
+  const derivedHtml = useMemo(() => (derivedMd === null ? null : toHtml(derivedMd)), [derivedMd]);
+
+  const [proseWordCount, setProseWordCount] = useState(() =>
     doc.body_md ? doc.body_md.trim().split(/\s+/).filter(Boolean).length : 0
   );
+  const wordCount = derivedMd
+    ? derivedMd.trim().split(/\s+/).filter(Boolean).length
+    : proseWordCount;
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -99,12 +119,22 @@ export function DocumentEditor({ doc, clientId, jsonLdContext }: Props) {
   const flags = qaResults.filter((r) => r.level === "flag");
   const warns = qaResults.filter((r) => r.level === "warn");
 
+  /** One place that decides what gets written, so no caller can persist half a package. */
+  function saveArgs(status: string) {
+    return {
+      docId: doc.id,
+      bodyMd: effectiveBodyMd,
+      status,
+      packageJson: pkg ? (pkg as unknown as Record<string, unknown>) : undefined,
+    };
+  }
+
   async function handleSave(targetStatus?: string) {
     const resolveStatus = targetStatus ?? (isBrief ? "briefed" : "in_review");
     setSaving(true);
     setSaved(false);
     try {
-      const result = await updateDocument({ docId: doc.id, bodyMd, status: resolveStatus });
+      const result = await updateDocument(saveArgs(resolveStatus));
       setQaResults(result.qaResults);
       setCurrentStatus(result.resolvedStatus);
       setSaved(true);
@@ -117,7 +147,7 @@ export function DocumentEditor({ doc, clientId, jsonLdContext }: Props) {
   async function handleApproveBrief() {
     setSaving(true);
     try {
-      await updateDocument({ docId: doc.id, bodyMd, status: "brief_approved" });
+      await updateDocument(saveArgs("brief_approved"));
       setCurrentStatus("brief_approved");
       router.refresh();
     } finally {
@@ -128,7 +158,7 @@ export function DocumentEditor({ doc, clientId, jsonLdContext }: Props) {
   async function handleApprove() {
     setSaving(true);
     try {
-      const result = await updateDocument({ docId: doc.id, bodyMd, status: "approved" });
+      const result = await updateDocument(saveArgs("approved"));
       setQaResults(result.qaResults);
       setCurrentStatus(result.resolvedStatus);
       router.refresh();
@@ -139,24 +169,24 @@ export function DocumentEditor({ doc, clientId, jsonLdContext }: Props) {
 
   async function handleKill() {
     if (!confirm("Mark this document as killed? It will be hidden from the active list.")) return;
-    await updateDocument({ docId: doc.id, bodyMd, status: "killed" });
+    await updateDocument(saveArgs("killed"));
     router.push(`/clients/${clientId}/documents`);
   }
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(bodyMd);
+    await navigator.clipboard.writeText(effectiveBodyMd);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
   async function handleCopyHtml() {
-    await navigator.clipboard.writeText(htmlRef.current);
+    await navigator.clipboard.writeText(derivedHtml ?? htmlRef.current);
     setCopiedHtml(true);
     setTimeout(() => setCopiedHtml(false), 2000);
   }
 
   function handleDownload() {
-    const blob = new Blob([bodyMd], { type: "text/markdown" });
+    const blob = new Blob([effectiveBodyMd], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -214,14 +244,22 @@ export function DocumentEditor({ doc, clientId, jsonLdContext }: Props) {
 
   async function handleRestore(v: DocVersion) {
     if (!confirm(`Restore to version ${v.version}?`)) return;
-    await restoreVersion(doc.id, v.body_md, v.version);
+    // Restore both halves — rolling a package back on body alone leaves the two inconsistent.
+    const restoredPkg = parsePagePackage(v.package_json);
+    await restoreVersion(
+      doc.id,
+      v.body_md,
+      v.version,
+      restoredPkg ? (restoredPkg as unknown as Record<string, unknown>) : undefined,
+    );
+    setPkg(restoredPkg);
     const html = toHtml(v.body_md);
     setEditorHtml(html);
     setBodyMd(v.body_md);
     setShowHistory(false);
   }
 
-  const editor = (
+  const proseEditor = (
     <TipTapEditor
       ref={editorRef}
       content={editorHtml}
@@ -233,10 +271,21 @@ export function DocumentEditor({ doc, clientId, jsonLdContext }: Props) {
         setSaved(false);
       }}
       onChangeText={(text) => {
-        setWordCount(text.trim().split(/\s+/).filter(Boolean).length);
+        setProseWordCount(text.trim().split(/\s+/).filter(Boolean).length);
       }}
       onSelectionUpdate={setHasSelection}
     />
+  );
+
+  /** Read-only for packages: the Package tab is where the copy is edited. */
+  const packagePreview = (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Generated from the package. Edit the copy in the <span className="font-medium">Package</span> tab —
+        this view and the exports follow from it.
+      </p>
+      <TipTapEditor content={derivedHtml ?? ""} editable={false} showToolbar={false} />
+    </div>
   );
 
   return (
@@ -277,7 +326,8 @@ export function DocumentEditor({ doc, clientId, jsonLdContext }: Props) {
           >
             <History className="size-3.5" />
           </Button>
-          {editable && hasSelection && (
+          {/* Section rewrite edits the prose editor, which packages don't have. */}
+          {editable && !pkg && hasSelection && (
             <Button variant="outline" size="sm" onClick={handleOpenRewrite} title="Rewrite selection with AI">
               <Wand2 className="size-3.5 mr-1.5" />
               Rewrite
@@ -366,21 +416,29 @@ export function DocumentEditor({ doc, clientId, jsonLdContext }: Props) {
       <div className="flex gap-4">
         <div className="flex-1 min-w-0">
           {pkg ? (
-            <Tabs defaultValue="copy" className="gap-3">
+            <Tabs defaultValue="package" className="gap-3">
               <TabsList>
-                <TabsTrigger value="copy">Copy</TabsTrigger>
                 <TabsTrigger value="package">Package</TabsTrigger>
+                <TabsTrigger value="copy">Copy preview</TabsTrigger>
               </TabsList>
-              {/* keepMounted: unmounting TipTap on tab switch would throw away unsaved edits. */}
-              <TabsContent value="copy" keepMounted>
-                {editor}
-              </TabsContent>
               <TabsContent value="package">
-                <PagePackageView pkg={pkg} ctx={jsonLdContext} />
+                <PagePackageView
+                  pkg={pkg}
+                  ctx={jsonLdContext}
+                  onChange={
+                    editable
+                      ? (next) => {
+                          setPkg(next);
+                          setSaved(false);
+                        }
+                      : undefined
+                  }
+                />
               </TabsContent>
+              <TabsContent value="copy">{packagePreview}</TabsContent>
             </Tabs>
           ) : (
-            editor
+            proseEditor
           )}
         </div>
 
